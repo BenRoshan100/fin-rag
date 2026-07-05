@@ -21,10 +21,10 @@ const VERSION_NOTES = {
     'Separate eval-dashboard deployed; per-message faithfulness badge removed from UI',
   ],
   'v1.1.0': [
-    'HyDE enabled: LLM generates a hypothetical answer, embeds it instead of the raw query',
-    'Closes question→answer vector space gap — dense retrieval finds answer-shaped chunks',
-    'BM25 + reranker still use original query',
-    'Result: recall +3.5% but latency 3× (one extra Groq call per query) — not worth the trade',
+    'HyDE enabled in this eval run — but LIVE production config has HyDE off (free tier TPM constraint)',
+    'Live config: contextual retrieval ON at ingest (Euron model, no Groq impact), HyDE off, Multi-Query off',
+    'This run is the closest available proxy — actual live recall sits between v1.0 baseline (0.51) and this run (0.72)',
+    'Per-query Groq calls in production: 1–2 (condense_question + answer only) — safe under 6000 TPM free tier',
   ],
   'v1.2.0': [
     'Multi-Query Retrieval: LLM generates 3 phrasings of each query at retrieval time',
@@ -33,11 +33,11 @@ const VERSION_NOTES = {
     'Result: +0.7% recall, relevancy dropped — Phase 1 (query-side) exhausted; root cause is chunk quality',
   ],
   'v1.3.0': [
-    'Contextual Retrieval: at ingest time, llama-3.1-8b-instant prepends 2-sentence context to each chunk',
-    'Context situates the chunk within its source document before embedding — richer vector representation',
-    'Result: recall +9.1pp (+18%), P@5 +6.6pp — biggest lift across all experiments',
-    'Latency 2× — contextualized chunks are longer, so LLM processes more tokens per answer',
-    'Production ingest untouched; eval-only via --contextual flag',
+    'Best measured stack: HyDE + Multi-Query + Contextual Retrieval — recall 0.768, P@5 0.984',
+    'Contextual Retrieval at ingest time: LLM prepends 2-sentence context per chunk before embedding (+18% recall)',
+    'HyDE + Multi-Query add 2 extra Groq calls per query — total 4 calls/query at this config',
+    'NOT live: Groq free tier 6000 TPM causes 429 storms under this call volume. Needs paid tier or alternative provider.',
+    'Upgrade path: switch to a provider with higher free TPM (or paid Groq) → re-enable hyde_enabled + multi_query_enabled in config.yaml',
   ],
 }
 
@@ -143,7 +143,7 @@ export default function App() {
               >
                 {indexData.map(e => (
                   <option key={e.version} value={e.version}>
-                    {formatVersion(e.version)}
+                    {e.is_live ? '● ' : ''}{formatVersion(e.version)}{e.is_live ? ' (LIVE)' : ''}
                   </option>
                 ))}
               </select>
@@ -167,10 +167,16 @@ export default function App() {
         {currentRun && (
           <>
             {/* Run meta */}
-            <div className="flex items-center gap-4 text-xs text-gray-400">
+            <div className="flex items-center gap-4 text-xs text-gray-400 flex-wrap">
               <span className="bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full">
                 {formatVersion(currentRun.version)}
               </span>
+              {indexData[currentIdx]?.is_live && (
+                <span className="bg-green-50 text-green-700 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                  LIVE
+                </span>
+              )}
               <span>{currentRun.sample_count} samples</span>
               <span>·</span>
               <span>{new Date(currentRun.computed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
@@ -183,6 +189,22 @@ export default function App() {
                 </>
               )}
             </div>
+
+            {/* Live proxy note */}
+            {indexData[currentIdx]?.is_live && indexData[currentIdx]?.live_note && (
+              <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-green-800">
+                <span className="font-semibold">Production config note — </span>
+                {indexData[currentIdx].live_note}
+              </div>
+            )}
+
+            {/* Blocked constraint warning */}
+            {indexData[currentIdx]?.blocked_by && (
+              <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-800">
+                <span className="font-semibold">Not in production — </span>
+                {indexData[currentIdx].blocked_by}
+              </div>
+            )}
 
             {/* Release notes */}
             {VERSION_NOTES[currentRun.version] && (

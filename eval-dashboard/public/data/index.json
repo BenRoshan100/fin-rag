@@ -3,7 +3,9 @@
     "version": "v1.1.0",
     "tag": "Violet",
     "date": "2026-06-24",
-    "file": "v1.1.0_20260624.json"
+    "file": "v1.1.0_20260624.json",
+    "is_live": true,
+    "live_note": "Live proxy — actual prod config: contextual retrieval ON (Euron model), HyDE off, Multi-Query off. Real recall sits between v1.0 baseline (0.51) and this run (0.72)."
   },
   {
     "version": "v1.2.0",
@@ -15,12 +17,14 @@
     "version": "v1.3.0",
     "tag": "Violet",
     "date": "2026-06-25",
-    "file": "v1.3.0_20260625.json"
+    "file": "v1.3.0_20260625.json",
+    "blocked_by": "Groq free tier 6000 TPM — HyDE + Multi-Query + Contextual = 4 Groq calls/query → 429 storms under concurrent load"
   },
   {
     "version": "v1.4.0",
     "tag": "Violet",
     "date": "2026-06-26",
-    "file": "v1.4.0_20260626.json"
+    "file": "v1.4.0_20260626.json",
+    "blocked_by": "Semantic chunking rejected — P@5 −27.3pp, latency 5× worse. Not a deployment candidate."
   }
 ]
