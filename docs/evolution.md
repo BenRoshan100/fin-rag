@@ -1,7 +1,7 @@
 # Prism — Project Evolution
 
 > End-to-end record of what was broken at each stage, what was built to fix it, and what is planned next.
-> Updated as the project evolves. Last updated: 2026-06-27 (Stage 17).
+> Updated as the project evolves. Last updated: 2026-07-05 (Stage 18).
 
 ---
 
@@ -556,6 +556,43 @@ All documents in a workspace were always searched together. A user with 10 docs 
 
 ---
 
+## Stage 18 — Free-Tier Stability + App Restored to Live (2026-07-05)
+
+### What was wrong
+- Maintenance banner left ON after Cerebras migration attempt (2026-06-29) failed and was reverted
+- Config.yaml still had `hyde_enabled: true` + `multi_query_enabled: true` — each query burned 4 Groq calls
+- Free tier limit: 6000 TPM → 429 storms under concurrent use with HyDE + MQ + contextual all on
+- Eval dashboard had no indication which version is live or why best stack (v1.3.0) isn't deployed
+
+### What we built
+
+| File | Change |
+|------|--------|
+| `config.yaml` | `hyde_enabled: false`, `multi_query_enabled: false` — reduces query-time Groq calls 4 → 1–2 |
+| `frontend/src/config.js` | `MAINTENANCE_MODE: false` — app live |
+| `eval-dashboard/public/data/index.json` | `is_live: true` + `live_note` on v1.1.0 (closest proxy); `blocked_by` constraint on v1.3.0 + v1.4.0 |
+| `eval-dashboard/src/App.jsx` | Green LIVE badge + prod config note on v1.1.0; amber "not in production" warning on v1.3.0/v1.4.0 |
+
+### Key design decisions
+- **Contextual retrieval kept ON** — uses `openai/gpt-oss-20b` via Euron API, zero Groq TPM impact at query time. Ingest-time only.
+- **HyDE + MQ disabled, not removed** — toggles in config.yaml; re-enable instantly when on paid tier
+- **v1.1.0 as live proxy in eval dashboard** — no eval run exists for "CTX-only, no HyDE, no MQ" config. v1.1.0 (recall=0.721) is an overestimate; actual live recall ≈ 0.55–0.65 given contextual index without HyDE query expansion
+- **Upgrade path documented in eval dashboard** — v1.3.0 blocked_by note explains exactly what to fix
+
+### Groq call budget (current vs best)
+
+| Config | Calls/query | TPM risk |
+|--------|------------|----------|
+| Current (CTX only) | 1–2 | Safe |
+| v1.3.0 (HyDE+MQ+CTX) | 4 | 429 on free tier |
+
+### Upgrade path to v1.3.0
+1. Switch to paid Groq tier (or find higher-TPM free provider)
+2. Set `hyde_enabled: true` + `multi_query_enabled: true` in `config.yaml`
+3. Push → HF Spaces rebuilds → run `scripts/run_eval_versioned.py --version v1.3.1 --tag "Violet" --n 50` to confirm metrics
+
+---
+
 ## Current State Snapshot
 
 ```
@@ -565,24 +602,27 @@ Embeddings:   Euron API text-embedding-3-small (sequential, ~1.7s/chunk — bott
 Chunking:     RecursiveCharacterTextSplitter 500-char, overlap 50
 Memory:       ConversationBufferWindowMemory k=10
 Web search:   Tavily advanced, 800-char truncation, max 2 results — MANDATORY (always on)
-HyDE:         ENABLED (config.yaml hyde_enabled=true). Hypothetical answer embedded for dense retrieval.
-Multi-Query:  ENABLED (config.yaml multi_query_enabled=true). 3-phrasing pool before rerank.
-Contextual:   ENABLED (contextual_retrieval.enabled=true in config). Two-phase upload: sync non-contextual
-              embed first (<3s queryable), BackgroundTask replaces with contextual chunks.
-              max_concurrent=3 (safe under Groq 6000 TPM). May 429 on free tier with large docs.
+HyDE:         DISABLED (hyde_enabled=false). Best measured: +21pp recall but costs 1 Groq call/query.
+              Re-enable when on paid Groq tier or higher-TPM provider.
+Multi-Query:  DISABLED (multi_query_enabled=false). Costs 1 Groq call/query — free tier cannot sustain.
+              Re-enable with HyDE together (v1.3.0 config) on paid tier.
+Contextual:   ENABLED (contextual_retrieval.enabled=true). Uses Euron model (openai/gpt-oss-20b) —
+              zero Groq TPM impact. Two-phase upload: sync non-contextual embed (<3s queryable),
+              BackgroundTask replaces with contextual chunks. max_concurrent=3, max_chunks=50 gate.
 Semantic:     DISABLED (semantic_enabled=false). Ablation showed recall +9.3pp but P@5 -27.3pp and 5× latency.
-              Rejected — v1.3.0 (HyDE+MQ+CTX) is the confirmed best stack.
-Briefing:     generate_briefing() fixed — strips control chars, falls back to ast.literal_eval on JSONDecodeError.
+              Rejected — v1.3.0 (HyDE+MQ+CTX) is the confirmed best stack when TPM allows.
+Groq calls/query (current): 1–2 (condense_question if follow-up + answer). Safe under 6000 TPM free tier.
+Groq calls/query (v1.3.0):  4 (condense + HyDE + Multi-Query + answer) → 429 storms on free tier.
 Eval:         Separate eval-dashboard/ static site → https://askprism-eval.vercel.app/
-              X-axis shows version name + date. Release notes per version. Dropdown: Violet (v1.0) etc.
-              Metrics: answer_correctness, answer_relevancy, context_recall, precision@5, latency
-              Ablation complete (2026-06-26): v1.1–v1.4 all run. Best: v1.3.0 recall=0.768, P@5=0.984, p50=2610ms
+              v1.1.0 marked LIVE (closest proxy). v1.3.0 and v1.4.0 show amber "not in production" warning.
+              Best measured: v1.3.0 recall=0.768, P@5=0.984, p50=2610ms
               Versioning: MAJOR.MINOR.PATCH — name changes on MAJOR only (v1.x.x=Violet, v2.x.x=Indigo)
 Citation:     [N] markers in LLM answers → clickable <sup> → CitationPopover (fixed-position, viewport-aware).
               Shows full chunk text, source name, page, rerank score. PDF: "Open page N →" link via GET /api/files/{filename}.
               Web: "Open source →". Toggle, click-away, above/below flip at 60% viewport height.
               SourceExpander: full content shown (200-char truncation removed).
 Frontend:     Violet v1.3 badge in sidebar footer. Maintenance banner config-driven (frontend/src/config.js).
+              MAINTENANCE_MODE=false — app is live as of 2026-07-05.
 Filter:       Sidebar doc chips toggleable. Selected: indigo ring. Badge above chat input shows scoped docs + clear ×.
               POST /api/chat accepts filter_docs: string[] | null. Empty = no filter. Resets on workspace switch.
               Backend: get_retriever_filtered() creates one-off HybridRetriever; singleton cache untouched.
@@ -591,8 +631,9 @@ Workspaces:   Per-workspace ChromaDB collection, singleton retriever cache
 Infra:        HF Spaces CPU Basic (backend, 16GB RAM, ephemeral FS — re-upload required after cold start) +
               https://askprism.vercel.app/ (frontend) + https://askprism-eval.vercel.app/ (eval)
               Backend URL: https://benroshan-prism.hf.space
-Known limits: Euron embed ~5s/chunk sequential — 30 chunks = ~150s blocking upload. Next: move embed to background.
+Known limits: Euron embed ~5s/chunk sequential — 30 chunks = ~150s total contextualization in background.
               HF Spaces ephemeral FS: chroma_db lost on cold start. Fix: mount HF persistent storage bucket.
+              HyDE + MQ disabled for free-tier stability. Best stack (v1.3.0) needs paid Groq or alt provider.
 Observability: LangSmith traces all LLM + retrieval calls (optional, env var)
 Streaming:    POST /api/chat returns SSE stream. token events per LLM chunk, done event with
               sources + retrieval_method. Frontend streams tokens into pre-placed assistant

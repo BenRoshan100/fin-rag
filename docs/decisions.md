@@ -46,6 +46,8 @@
 | 2026-06-27 | Empty `filter_docs` treated as no filter | Backend guard: `body.filter_docs if body.filter_docs else None`. Frontend sends `null` when array is empty. Prevents zero-result queries from empty selection. | Active |
 | 2026-06-27 | `source_type` metadata added to all chunks at ingest | PDF/TXT/CSV tagged at load time in `ingest.py`; URL-ingested docs tagged in `url_loader.py`. Enables citation badge display and potential future source-type filtering. | Active |
 | 2026-06-27 | Filter state resets on workspace switch | `useEffect(() => setFilterDocs([]), [currentWorkspace])` in `App.jsx`. Stale filter from workspace A cannot pollute queries in workspace B. | Active |
+| 2026-07-05 | HyDE + Multi-Query disabled in production (free-tier stability) | HyDE + MQ = 2 extra Groq calls/query on top of condense + answer = 4 total. Free tier 6000 TPM → 429 storms. Disabled in `config.yaml`; contextual stays ON (Euron model, no Groq impact). Re-enable on paid tier. | Active |
+| 2026-07-05 | Eval dashboard marks live version and blocked versions explicitly | `index.json` gets `is_live: true` + `live_note` on closest proxy run; `blocked_by` on runs not deployable. Dashboard renders LIVE badge + constraint warnings. Honest representation of prod vs best-measured gap. | Active |
 
 ## Rejected alternatives
 
@@ -56,3 +58,5 @@
 | LlamaIndex instead of LangChain | LangChain has better ParentDocumentRetriever and ConversationalRetrievalChain support |
 | Streaming LLM responses | Adds frontend complexity; acceptable latency at demo scale |
 | BM25 persisted to disk | Not required for demo; rebuild on startup is fast enough (~1s for sample corpus) |
+| Cerebras migration (2026-06-29) | Free tier only has `gpt-oss-120b` + `zai-glm-4.7` at 5 req/min — Llama 3.3 70B not available. Worse rate limit than Groq. All 8 commits hard-reset. |
+| HyDE + Multi-Query in production on free Groq tier | 4 Groq calls/query → 429 storms. Disabled in config.yaml, not removed — zero code change to re-enable on paid tier. |
