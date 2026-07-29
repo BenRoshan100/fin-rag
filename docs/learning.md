@@ -1,4 +1,6 @@
-# Prism — Learning Concepts
+# Prism — Learning Concepts (Reordered)
+
+> Duplicate of `learning.md`, renumbered 1→17 to follow the actual product workflow (was scattered 1–24 with gaps). Delete `learning.md` after review; this becomes the canonical file.
 
 ## Concept Index by Product Workflow
 
@@ -10,23 +12,23 @@ Every concept in this file maps to a specific stage in Prism's request lifecycle
 │                                                                 │
 │  PDF/TXT/CSV → chunk → embed → store → briefing                │
 │                                                                 │
-│  Concept 11  RecursiveCharacterTextSplitter                     │
+│  Concept 1   RecursiveCharacterTextSplitter                     │
 │              How text is split into chunks (paragraph → line    │
 │              → word → char priority). Overlap bridges splits.   │
 │                                                                 │
-│  Concept 1   Parent-Child Chunking                              │
+│  Concept 2   Parent-Child Chunking                              │
 │              Design pattern: small child chunks for retrieval,  │
 │              large parent chunks sent to LLM.                   │
 │                                                                 │
-│  Concept 2   InMemoryStore                                      │
+│  Concept 3   InMemoryStore                                      │
 │              Where parent chunks live (RAM only, dies on        │
 │              restart). ChromaDB stores child vectors on disk.   │
 │                                                                 │
-│  Concept 14  LLM at Ingest Time (Briefing)                      │
+│  Concept 4   LLM at Ingest Time (Briefing)                      │
 │              After ingest, LLM auto-generates 5-bullet summary  │
 │              + 3 suggested questions. Runs once, not per query. │
 │                                                                 │
-│  Concept 21  Contextual Retrieval                               │
+│  Concept 5   Contextual Retrieval                               │
 │              Prepend 2-sentence situating context to each chunk │
 │              before embedding. Fixes decontextualized chunks.   │
 │              Measured: +18% recall (0.51→0.60), +6.6pp P@5.    │
@@ -39,25 +41,31 @@ Every concept in this file maps to a specific stage in Prism's request lifecycle
 │  question → (optionally) multi-query expand → (optionally)     │
 │  HyDE expand → retrieve → fuse → rerank → top-5 chunks         │
 │                                                                 │
-│  Concept 17  Multi-Query Retrieval                              │
+│  Concept 6   Multi-Query Retrieval                              │
 │              LLM generates 3 phrasings of query → retrieve for │
 │              each → pool + deduplicate → RRF → rerank.          │
-│              Widens candidate pool. ON by default.              │
+│              Widens candidate pool. OFF by default (free tier). │
 │                                                                 │
 │  Concept 7   HyDE                                               │
 │              LLM generates fake answer → embed fake answer      │
 │              instead of query → closes question/answer vector   │
 │              space gap → higher context recall.                 │
-│              Measured: +21pp recall (0.51→0.72). ON by default. │
+│              Measured: +21pp recall (0.51→0.72). OFF by default │
+│              (free tier).                                       │
 │                                                                 │
-│  Concept 4   BM25Okapi                                          │
+│  Concept 8   BM25Okapi                                          │
 │              Sparse keyword retrieval. Catches exact terms       │
 │              (section numbers, ₹ amounts) that dense misses.    │
-│              TF saturation prevents high-frequency term bias.   │
+│              TF saturation prevents high-frequency term bias.    │
 │                                                                 │
-│  Concept 3   RRF + Cross-Encoder Pipeline                       │
+│  Concept 9   RRF + Cross-Encoder Pipeline                       │
 │              Dense (0.7) + BM25 (0.3) merged via weighted RRF. │
 │              Cross-encoder reranks top-10 jointly → top-5.      │
+│                                                                 │
+│  Concept 10  Metadata Filtering                                 │
+│              Filter the candidate pool, not the statistics.     │
+│              Full-corpus BM25 IDF preserved; ChromaDB `where`   │
+│              + BM25 pool filter narrow results to selected docs.│
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -66,7 +74,7 @@ Every concept in this file maps to a specific stage in Prism's request lifecycle
 │                                                                 │
 │  question → condense with history → Tavily → web results        │
 │                                                                 │
-│  Concept 5   ConversationalRetrievalChain Condensation Trap     │
+│  Concept 11  ConversationalRetrievalChain Condensation Trap     │
 │              Chain's internal condense step strips prepended    │
 │              web context. Fix: bypass chain entirely for web    │
 │              queries. Direct LLM call preserves all context.    │
@@ -74,22 +82,9 @@ Every concept in this file maps to a specific stage in Prism's request lifecycle
 │  Concept 12  ConversationBufferWindowMemory                     │
 │              Sliding k=10 window of chat history injected into  │
 │              condense_question() before Tavily search, so       │
-│              follow-up queries have full context.               │
+│              follow-up queries have full context. Also covers   │
+│              the output_key trap when saving the LLM's turn.    │
 └─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  LLM GENERATES ANSWER                                           │
-│                                                                 │
-│  [doc chunks] + [web results] + [chat history] → LLM → answer  │
-│                                                                 │
-│  Concept 12  ConversationBufferWindowMemory (output_key trap)   │
-│              Memory saves this turn for next question.          │
-│              output_key="answer" required — chain returns       │
-│              multiple keys, memory needs to know which to save. │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -97,11 +92,11 @@ Every concept in this file maps to a specific stage in Prism's request lifecycle
 │                                                                 │
 │  50 eval pairs → retrieve → answer → score → versioned JSON    │
 │                                                                 │
-│  Concept 8   Eval Metric Design (Faithfulness Is Circular)      │
+│  Concept 13  Eval Metric Design (Faithfulness Is Circular)      │
 │              Why faithfulness 1.0 was meaningless. How          │
 │              answer_correctness (vs ground truth) is honest.    │
 │                                                                 │
-│  Concept 9   Precision@K vs Recall Diagnostic                   │
+│  Concept 14  Precision@K vs Recall Diagnostic                   │
 │              P@5=0.89 + recall=0.51 = pool too narrow.          │
 │              The combination tells you exactly what to fix.     │
 │                                                                 │
@@ -111,543 +106,27 @@ Every concept in this file maps to a specific stage in Prism's request lifecycle
 │              Includes computation steps, failure modes,         │
 │              Prism v1.0.0 results, and metric interaction map.  │
 │                                                                 │
-│  Concept 20  Semantic Chunking Tradeoff                         │
+│  Concept 16  Semantic Chunking Tradeoff                         │
 │              Topic-boundary splits improve recall but hurt      │
 │              precision when eval pairs are aligned to fixed     │
 │              chunk boundaries. Measured: +9.3pp recall,         │
 │              -27.3pp P@5, 5× latency (v1.4.0 ablation).        │
 └─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  OPERATIONS / LESSONS LEARNED                                   │
+│                                                                 │
+│  Concept 17  Provider Migration Risk                            │
+│              "OpenAI-compatible" ≠ same models/limits. Verify   │
+│              provider's actual model roster + rate limit before │
+│              migrating. Cerebras attempt reverted same day.     │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 1. Parent-Child Chunking — The Retrieval-Faithfulness Tradeoff
-
-### The Problem with One Chunk Size
-
-| Chunk Size | Retrieval | LLM Answer Quality |
-| --- | --- | --- |
-| Small (200 chars) | Precise — matches exact phrase | Bad — too little context, answer is fragmented |
-| Large (800 chars) | Imprecise — embedding averages over too much text | Good — LLM sees full context |
-
-**Key insight:** Embeddings of large chunks get "diluted" — the vector represents the average meaning of 800 chars. Small chunks have sharper, more focused vectors that match queries better.
-
-### How ParentDocumentRetriever Works
-
-**INGEST:**
-
-- 800-char parent → stored in `InMemoryStore` (keyed by ID)
-- 200-char children → embedded → stored in ChromaDB
-
-**QUERY:**
-
-1. Query hits ChromaDB → finds best matching 200-char child chunk
-2. Look up `parent_id` from child metadata
-3. Return the full 800-char parent to LLM
-
-### Why This Works
-
-- **Child chunk** = precise retrieval target (dense vector = focused meaning)
-- **Parent chunk** = rich answer context (LLM gets surrounding sentences)
-
-### Concrete Example — RBI Circular PDF
-
-**Raw text (one paragraph):**
-
-> "The Reserve Bank of India has mandated that all UPI transactions above ₹2,000 must undergo additional authentication from January 2025. This includes biometric verification or OTP-based second factor. Non-compliant PSPs will face penalties up to ₹10 lakh per violation."
-> 
-
-**After chunking:**
-
-- **Parent (800 chars) → InMemoryStore:** Full paragraph above
-- **Child A (200 chars) → ChromaDB:** "The Reserve Bank of India has mandated that all UPI transactions above ₹2,000 must undergo additional authentication from January 2025."
-- **Child B:** "This includes biometric verification or OTP-based second factor."
-- **Child C:** "Non-compliant PSPs will face penalties up to ₹10 lakh per violation."
-
-**Query:** `"What is the UPI transaction authentication limit?"`
-
-→ ChromaDB finds **Child A** (score: 0.91) — focused vector on UPI + ₹2000 + authentication
-
-→ Fetches parent_id → returns **full parent paragraph** to LLM
-
-**Comparison Table:**
-
-| Approach | LLM Gets | Problem |
-| --- | --- | --- |
-| Dense-only, large chunks | Full paragraph (good) | Match was imprecise — wrong paragraph might score higher |
-| Dense-only, small chunks | Child A only (38 words) | Misses penalty info — incomplete answer |
-| ParentDocumentRetriever | Full paragraph (precise match + rich context) | ✅ Best of both |
-
-**LLM final answer:** "UPI transactions above ₹2,000 require additional authentication (biometric or OTP) from Jan 2025. Non-compliant PSPs face up to ₹10 lakh penalty."
-
----
-
-## 2. InMemoryStore — What It Actually Is
-
-**Key point: InMemoryStore is NOT part of ChromaDB. It's a separate, RAM-only store.**
-
-Under the hood it's essentially a plain Python dict wrapped in a LangChain class:
-
-```python
-store = {}
-store["parent_id_abc123"] = "Full 800-char parent chunk text..."
-store["parent_id_def456"] = "Another parent chunk..."
-```
-
-### Two Separate Stores in Prism
-
-| ChromaDB (on disk) | InMemoryStore (RAM only) |
-| --- | --- |
-| Child chunk vectors | Parent chunk text |
-| [vector, metadata] → find similar | parent_id → full text |
-| ✅ Survives restart | ❌ Dies on restart |
-
-### Flow
-
-```
-Child A metadata = { "parent_id": "abc123", "text": "short child..." }
-                            ↓
-             InMemoryStore["abc123"]
-                            ↓
-             "Full 800-char parent text" → LLM
-```
-
-### ⚠️ Known Limitation in Prism
-
-Render free tier cold-starts → InMemoryStore is wiped → must **re-ingest PDFs on every cold start**.
-
-ChromaDB persists to disk so child vectors survive, but parent text is gone.
-
-### ⚠️ Architecture Note — Intended vs Current Implementation
-
-`architecture.md` and Concept 1 describe ParentDocumentRetriever (child 200 / parent 800). The current `ingest.py` uses a single-pass `RecursiveCharacterTextSplitter` at 500 chars — no separate parent store. The ParentDocumentRetriever was the original design and is documented as such. Both chunking approaches teach the same tradeoff; the parent-child concept remains valid as a pattern even if the current code simplified to single-pass chunking.
-
----
-
-## 3. RRF + Cross-Encoder Reranker Pipeline
-
-### 3a. RRF — Reciprocal Rank Fusion
-
-**Problem:** Dense retrieval returns a ranked list. BM25 returns a ranked list. Scores are on different scales (BM25: 0–15, cosine: 0–1) — can't add them directly.
-
-**RRF Solution:** Ignore raw scores. Use only rank position.
-
-```
-Standard RRF formula:
-score(doc) = Σ  1 / (k + rank_in_list)
-             k = 60  (constant, dampens top-rank advantage)
-
-Prism's weighted RRF (applied inside the formula per list):
-score(doc) += dense_weight  / (k + rank_in_dense_list)   # 0.7 × contribution
-score(doc) += sparse_weight / (k + rank_in_sparse_list)  # 0.3 × contribution
-```
-
-**Example:**
-
-| Doc | Dense (ChromaDB) | BM25 | RRF Score |
-| --- | --- | --- | --- |
-| Doc A | Rank 1 (0.91) | Rank 2 (9.1) | 1/61 + 1/62 = **0.0325** ✅ |
-| Doc C | Rank 3 (0.71) | Rank 1 (12.3) | 1/63 + 1/61 = **0.0320** |
-| Doc B | Rank 2 (0.87) | — | 1/62 = 0.0161 |
-| Doc D | — | Rank 3 (7.4) | 1/63 = 0.0159 |
-
-**Doc A wins** — appeared high in BOTH lists → signals true relevance.
-
-> In Prism: `dense_weight=0.7`, `sparse_weight=0.3` applied **inside** the RRF formula — each list's contribution is multiplied by its weight before summing. Not "before RRF" as a pre-filter, but as a per-list scaling factor within fusion (see Concept 4 for the actual code).
-> 
-
-### 3b. Cross-Encoder Reranker
-
-**Problem:** RRF gives top-10 candidates. Bi-encoder (ChromaDB) encodes query and doc *separately* → approximate similarity.
-
-**Cross-Encoder:** Feeds query + doc *together* into BERT → full attention across both → much more accurate relevance score.
-
-|  | Bi-Encoder (ChromaDB) | Cross-Encoder (TinyBERT) |
-| --- | --- | --- |
-| Method | embed(query) + embed(doc) → cosine(q,d) | BERT([query][SEP][doc]) → single score 0–1 |
-| Speed | Fast | Slow |
-| Accuracy | Approximate | Accurate |
-| Encoding | Independent | Joint |
-
-**Example — after RRF top-10:**
-
-| Pair | Cross-Encoder Score |
-| --- | --- |
-| (query, Doc A) | 0.94 ✅ |
-| (query, Doc B) | 0.88 ✅ |
-| (query, Doc C) | 0.61 |
-| (query, Doc D) | 0.23 |
-
-Top-5 by cross-encoder score → LLM
-
-### Full Retrieval Pipeline
-
-```
-Query
-  |
-  ├→ ChromaDB dense  → top-10 ranked docs
-  ├→ BM25 sparse     → top-10 ranked docs
-  |
-  ↓
-RRF fusion → merged top-10 (rank-based, scale-agnostic)
-  |
-  ↓
-Cross-encoder → re-scores all 10 jointly with query
-  |
-  ↓
-Top-5 parent chunks → LLM
-```
-
----
-
----
-
-## 4. BM25Okapi — Why Keywords Beat Embeddings for Exact Terms
-
-### The Problem with Dense Retrieval on Regulatory Text
-
-Embeddings capture *meaning*. But regulatory text has exact identifiers — section numbers, policy codes, rupee amounts — where the exact token matters, not the meaning.
-
-**Example:**
-
-Query: `"What is the penalty for UPI non-compliance?"`
-
-A dense embedding model reads this as: *"something about UPI and consequences"*.
-
-Two chunks in corpus:
-- Chunk A: `"Non-compliant PSPs will face penalties up to ₹10 lakh per violation."` ← exact answer
-- Chunk B: `"UPI has transformed digital payments in India with over 100 billion transactions."` ← semantically close (UPI topic) but wrong
-
-Dense retrieval might rank Chunk B high because it's heavily UPI-themed. BM25 ranks Chunk A high because "penalt" and "non-compli" are rare, high-signal tokens.
-
-### How BM25Okapi Works
-
-Plain TF-IDF problem: a doc that says "UPI" 50 times gets 50× the score. That's unfair — one mention of "₹10 lakh" in the right context should beat 50 mentions of "UPI" in a generic overview.
-
-BM25 fixes this with **term frequency saturation**:
-
-```
-BM25 score = IDF(term) × [ tf × (k1 + 1) ] / [ tf + k1 × (1 - b + b × dl/avgdl) ]
-
-Where:
-  tf    = how many times term appears in this chunk
-  IDF   = how rare the term is across all chunks (log scale)
-  k1    = saturation constant (~1.5) — controls how fast TF saturates
-  b     = length normalization (~0.75)
-  dl    = this chunk's length
-  avgdl = average chunk length in corpus
-```
-
-**Saturation in plain English:**
-
-| tf (term count in chunk) | TF-IDF score | BM25 score (k1=1.5) |
-| --- | --- | --- |
-| 1 | 1.0 | 1.0 |
-| 5 | 5.0 | 1.56 ← plateaus |
-| 20 | 20.0 | 1.79 ← barely grows |
-| 50 | 50.0 | 1.88 ← effectively capped |
-
-A chunk mentioning "UPI" 50 times scores almost the same as one mentioning it 5 times. But "₹10 lakh" appearing once in a chunk that has it = high IDF (rare token) × full TF benefit.
-
-### In Prism
-
-```python
-# bm25_index.py
-from rank_bm25 import BM25Okapi
-
-# .lower() matters — "UPI" and "upi" are different tokens without it
-corpus = [doc["content"].lower().split() for doc in all_chunks]
-bm25 = BM25Okapi(corpus)
-
-# At query time — query also lowercased to match corpus tokenization:
-scores = bm25.get_scores(query.lower().split())
-top_k_idx = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
-```
-
-BM25 operates on raw tokens (word split). No embeddings. No GPU. Rebuilds in ~1s at startup from corpus.
-
-**Weight in Prism:** `sparse_weight=0.3` in RRF — BM25 is complementary, not dominant. Dense handles semantic meaning; BM25 catches exact matches dense misses.
-
----
-
-## 5. ConversationalRetrievalChain — The Silent Context Killer
-
-### What the Chain Does Internally
-
-`ConversationalRetrievalChain` has two internal steps most people don't know about:
-
-```
-User question + chat history
-        ↓
-[STEP 1] Condense question
-        LLM rewrites "Is the price level good?" 
-        → "Is Bajaj Finance stock ₹908-924 a good buy in 2026?"
-        (standalone question for retrieval)
-        ↓
-[STEP 2] Retrieve + Answer
-        Standalone question → retriever → top-5 chunks → LLM answer
-```
-
-Step 1 exists so follow-up questions work without full history context. Good design for RAG.
-
-### The Bug: Web Context Gets Stripped
-
-When Prism added Tavily web search, the naive approach was:
-
-```python
-web_results = tavily.search(question)
-augmented_question = f"Web context: {web_results}\n\nQuestion: {question}"
-chain.invoke({"question": augmented_question})  # ← WRONG
-```
-
-What actually happens:
-
-```
-augmented_question (with Tavily content prepended)
-        ↓
-[STEP 1] Chain's condense LLM:
-        "Rewrite this as a standalone retrieval query."
-        Output: "What is Bajaj Finance stock price?"
-        ← ALL TAVILY CONTENT STRIPPED. LLM never sees it.
-        ↓
-[STEP 2] Answer LLM gets: corpus chunks only. No web context.
-```
-
-The chain's condensation step rewrites the question for retrieval quality — and throws away everything else.
-
-### The Fix in Prism
-
-Bypass the chain entirely for web queries. Direct LLM call:
-
-```python
-# chain.py
-def run_query_with_web(question, rag_docs, web_sources, memory):
-    history = memory.load_memory_variables({})["history"]
-    
-    prompt = f"""
-    Chat history: {history}
-    
-    Web search results:
-    {web_sources}
-    
-    Document context:
-    {rag_docs}
-    
-    Question: {question}
-    Answer:"""
-    
-    answer = llm.invoke(prompt)
-    memory.save_context({"input": question}, {"answer": answer})
-    return answer
-```
-
-No condensation step. Web context reaches the LLM guaranteed.
-
-**Lesson:** LangChain abstractions are powerful but opaque. When something doesn't work, read what the chain actually does internally — don't assume the abstraction is transparent.
-
----
-
-## 7. HyDE — Hypothetical Document Embeddings
-
-### The Problem with Embedding a Question
-
-When you search ChromaDB, you embed the *query* and find similar vectors. But your corpus contains *answers*, not questions. They live in different regions of vector space.
-
-**Concrete example:**
-
-Query: `"What is the UPI transaction limit for P2P transfers?"`
-
-This embeds as a *question vector* — the model has seen millions of questions, it knows this pattern.
-
-The answer in your corpus: `"P2P UPI transfers are capped at ₹1 lakh per transaction per day as per NPCI guidelines."`
-
-This embeds as an *answer vector* — declarative sentence, factual tone, different region in 1536-dimensional space.
-
-They're semantically related, but the vector distance is larger than it should be.
-
-### HyDE's Solution
-
-Before searching, ask the LLM to hallucinate an answer:
-
-```
-Step 1: LLM generates a fake answer to the query
-  Query: "What is the UPI transaction limit for P2P transfers?"
-  Fake answer: "The UPI transaction limit for P2P transfers is typically 
-                set by NPCI and varies by bank, generally around ₹1 lakh 
-                per day for most PSPs."
-
-Step 2: Embed the FAKE ANSWER (not the query)
-  vector = embed("The UPI transaction limit for P2P transfers is...")
-
-Step 3: Search ChromaDB with this vector
-  → Finds real answer chunks that are semantically close to a fake answer
-  → Much closer in vector space than the original question was
-```
-
-### Why "Hypothetical" Works
-
-The fake answer and the real corpus chunk are both declarative, factual, answer-shaped text. They live in the same region of vector space. The query (a question) lives elsewhere.
-
-```
-Vector space (simplified):
-
-[Question zone]          [Answer zone]
-"What is UPI limit?" --- ... --- "P2P capped at ₹1 lakh..."
-       ↑                                    ↑
-  far from corpus                    close to corpus chunk
-  
-HyDE:
-"UPI limit is ~₹1 lakh..." ← fake answer → close to real chunk ✅
-```
-
-### In Prism
-
-```python
-# retriever.py
-def _hyde_expand(self, query: str) -> str:
-    prompt = f"Write a 2-sentence factual answer to: {query}"
-    return self.llm.invoke(prompt).content
-
-def _get_relevant_documents(self, query: str):
-    dense_query = self._hyde_expand(query) if self.use_hyde else query
-    
-    # Dense search uses fake answer embedding
-    dense_docs = self.vectorstore.similarity_search(dense_query, k=10)
-    
-    # BM25 still uses original query (keyword matching needs real terms)
-    sparse_docs = self.bm25_retrieve(query, k=10)
-    
-    return self.rrf_and_rerank(dense_docs, sparse_docs)
-```
-
-**ON by default** (`config.yaml` `hyde_enabled: true`) — adds one Groq call per query (~200ms). Latency cost accepted.
-
-**Measured lift (v1.1.0, 18 samples):** context_recall 0.51 → 0.72 (+21pp). Latency 2029ms → 4018ms p50 (2×). HyDE specifically helps recall — it finds chunks that keyword/direct-embed matching misses.
-
----
-
-## 8. Eval Metric Design — Why Faithfulness Is Circular
-
-### Four RAGAS Metrics and What They Actually Measure
-
-| Metric | Judge compares | Question it answers |
-| --- | --- | --- |
-| **faithfulness** | LLM answer vs retrieved chunks | "Did the LLM stick to what was in the retrieved docs?" |
-| **answer_correctness** | LLM answer vs ground_truth reference | "Is the answer actually right?" |
-| **answer_relevancy** | LLM answer vs original question | "Did the answer address what was asked?" |
-| **context_recall** | Retrieved chunks vs ground_truth | "Did retrieval find the chunks needed to answer?" |
-
-### The Faithfulness Trap
-
-In Prism v1 eval, faithfulness scored 1.0. Seemed great. Was meaningless.
-
-Here's why:
-
-```
-Eval pair designed alongside corpus:
-  Question: "What is the UPI P2P transaction limit?"
-  Ground truth: "₹1 lakh per day"
-  
-  Corpus chunk (also written by us): 
-  "P2P UPI transfers are capped at ₹1 lakh per day per NPCI guidelines."
-
-Flow:
-  1. LLM retrieves that chunk (of course — it's perfectly matched)
-  2. LLM answers: "The UPI P2P limit is ₹1 lakh per day."
-  3. RAGAS faithfulness judge: "Does answer match retrieved chunk?" → YES → score: 1.0
-```
-
-The judge is comparing the answer to the chunk that was *designed to produce that answer*. Circular. Score tells you the retrieval worked, not whether the answer is correct.
-
-### answer_correctness Is the Honest Metric
-
-```
-Flow:
-  1. LLM answers: "The UPI P2P limit is ₹1 lakh per day."
-  2. Ground truth (human-written reference): "₹1 lakh per transaction per day"
-  3. RAGAS judge: "Does answer match ground truth?" → mostly yes → score: 0.82
-```
-
-Judge compares to an *independent human reference*. No circular dependency on retrieved chunks. Harder to game.
-
-**Prism v1.0.0 Violet results:**
-
-| Metric | Score | Interpretation |
-| --- | --- | --- |
-| answer_correctness | 0.82 | 82% of answers match ground truth — honest signal |
-| answer_relevancy | 0.62 | RAGAS penalizes verbosity — Groq 70B tends to over-explain |
-| context_recall | 0.51 | Only 51% of needed chunks retrieved — target for Multi-Query |
-| P@5 | 0.89 | When chunks are retrieved, 89% are correct — precision is fine |
-
-### The P@5 + Recall Diagnostic
-
-P@5=0.89 + recall=0.51 tells you something specific:
-
-```
-Retrieval pool is too narrow.
-
-"When we retrieve something, it's usually right (0.89)."
-"But we're missing ~half the relevant chunks (0.51)."
-
-Root cause: single-phrasing query misses chunks phrased differently.
-Fix: Multi-Query Retrieval — generate 3 phrasings, retrieve for each, pool candidates.
-```
-
-This is exactly how production ML teams diagnose retrieval systems. The combination of metrics points to the specific fix.
-
----
-
-## 9. Precision@K vs Recall — The Retrieval Diagnostic Pair
-
-### Definitions in Plain English
-
-Imagine your corpus has **5 chunks** that are genuinely relevant to a query. Your retriever returns **5 chunks** (K=5).
-
-```
-Ground truth relevant chunks: [A, B, C, D, E]
-Retrieved chunks:              [A, B, X, Y, Z]
-
-Precision@5 = correct retrieved / K = 2/5 = 0.40
-              "Of what I returned, how much was right?"
-
-Recall@5    = correct retrieved / total relevant = 2/5 = 0.40
-              "Of all the right chunks, how many did I find?"
-```
-
-### The Four Diagnostic Combinations
-
-| P@5 | Recall | Diagnosis | Fix |
-| --- | --- | --- | --- |
-| High | High | ✅ Retrieval working well | Ship it |
-| High | Low | Pool too narrow — finding right chunks but missing others | Multi-Query Retrieval, HyDE |
-| Low | High | Too much noise — finding relevant chunks but also junk | Better reranking, stricter K |
-| Low | Low | Retrieval fundamentally broken | Check embeddings, chunking strategy |
-
-### Prism v1.0.0 Violet: High P, Low Recall
-
-```
-P@5 = 0.89 → "When Prism retrieves a chunk, 89% of the time it's relevant."
-Recall = 0.51 → "But Prism only finds 51% of the relevant chunks total."
-
-Example query: "What are the RBI guidelines on UPI merchant limits?"
-
-Relevant chunks in corpus: [merchant_limit_2024, merchant_kyc, limit_circular_2023, payment_cap, psp_obligations]
-
-Prism retrieved: [merchant_limit_2024, merchant_kyc, some_unrelated_chunk, another_unrelated, payment_cap]
-
-Precision@5 = 3/5 = 0.60 (found 3 right ones, 2 noise)
-Recall = 3/5 = 0.60 (missed limit_circular_2023 and psp_obligations)
-```
-
-Why did it miss them? `limit_circular_2023` might use different phrasing: *"The ceiling for merchant UPI collections was revised..."* — no overlap with "merchant limits". Single-phrasing retrieval misses it.
-
-Multi-Query generates: `"UPI merchant payment ceiling"`, `"RBI merchant collection limit"`, `"PSP merchant UPI cap"` → retrieves from all three → pools candidates → recall rises.
-
----
-
----
-
-## 11. RecursiveCharacterTextSplitter — How Text Gets Chunked
+## 1. RecursiveCharacterTextSplitter — How Text Gets Chunked
 
 ### The Problem with Fixed Splits
 
@@ -715,81 +194,110 @@ chunks = splitter.split_documents(documents)
 
 ---
 
-## 12. ConversationBufferWindowMemory — Sliding Window Chat History
+## 2. Parent-Child Chunking — The Retrieval-Faithfulness Tradeoff
 
-### Why You Need Memory in a Chat System
+### The Problem with One Chunk Size
 
-Each `POST /api/chat` is a stateless HTTP request. The LLM has no memory of what was said 10 seconds ago. Without memory:
+| Chunk Size | Retrieval | LLM Answer Quality |
+| --- | --- | --- |
+| Small (200 chars) | Precise — matches exact phrase | Bad — too little context, answer is fragmented |
+| Large (800 chars) | Imprecise — embedding averages over too much text | Good — LLM sees full context |
 
-```
-User: "Tell me about UPI transaction limits."
-Prism: "UPI P2P limit is ₹1 lakh per day..."
+**Key insight:** Embeddings of large chunks get "diluted" — the vector represents the average meaning of 800 chars. Small chunks have sharper, more focused vectors that match queries better.
 
-User: "What about merchant payments?"   ← no context
-LLM sees: question = "What about merchant payments?"  ← what is "about"? who knows?
-Prism: "Merchant payments are a type of..."  ← wrong, generic answer
-```
+### How ParentDocumentRetriever Works
 
-### How ConversationBufferWindowMemory Works
+**INGEST:**
 
-Keeps last `k` conversation turns (human + AI) as a rolling window:
+- 800-char parent → stored in `InMemoryStore` (keyed by ID)
+- 200-char children → embedded → stored in ChromaDB
 
-```python
-# memory.py
-memory = ConversationBufferWindowMemory(
-    memory_key="chat_history",
-    return_messages=True,
-    output_key="answer",   # ← critical — explained below
-    k=10,                  # keep last 10 turns
-)
-```
+**QUERY:**
 
-Turn 1: `[Human: "Tell me about UPI limits", AI: "UPI P2P is ₹1 lakh..."]`
-Turn 2: `[Human: "Tell me about UPI limits", AI: "...", Human: "What about merchant payments?", AI: "Merchant UPI limit is ₹5 lakh..."]`
+1. Query hits ChromaDB → finds best matching 200-char child chunk
+2. Look up `parent_id` from child metadata
+3. Return the full 800-char parent to LLM
 
-At turn 11: Turn 1 is evicted. Window always has last 10.
+### Why This Works
 
-The chain sees:
-```
-Chat history:
-  Human: Tell me about UPI limits
-  AI: UPI P2P is ₹1 lakh per day...
+- **Child chunk** = precise retrieval target (dense vector = focused meaning)
+- **Parent chunk** = rich answer context (LLM gets surrounding sentences)
 
-Current question: What about merchant payments?
-```
-→ LLM understands "What about" refers to UPI limits. Answers correctly.
+### Concrete Example — RBI Circular PDF
 
-### The output_key Trap
+**Raw text (one paragraph):**
 
-`ConversationalRetrievalChain` returns a dict with multiple keys:
+> "The Reserve Bank of India has mandated that all UPI transactions above ₹2,000 must undergo additional authentication from January 2025. This includes biometric verification or OTP-based second factor. Non-compliant PSPs will face penalties up to ₹10 lakh per violation."
+> 
 
-```python
-result = chain.invoke({"question": "..."})
-# result = {
-#   "answer": "UPI P2P limit is ₹1 lakh...",
-#   "source_documents": [...],
-#   "question": "..."
-# }
-```
+**After chunking:**
 
-Memory's `save_context` call needs to know which key is the "output" to save:
+- **Parent (800 chars) → InMemoryStore:** Full paragraph above
+- **Child A (200 chars) → ChromaDB:** "The Reserve Bank of India has mandated that all UPI transactions above ₹2,000 must undergo additional authentication from January 2025."
+- **Child B:** "This includes biometric verification or OTP-based second factor."
+- **Child C:** "Non-compliant PSPs will face penalties up to ₹10 lakh per violation."
 
-```python
-# WRONG — KeyError because chain returns multiple output keys
-memory = ConversationBufferWindowMemory(memory_key="chat_history")
+**Query:** `"What is the UPI transaction authentication limit?"`
 
-# RIGHT — tell memory exactly which key to save
-memory = ConversationBufferWindowMemory(
-    memory_key="chat_history",
-    output_key="answer",   # save result["answer"], not the whole dict
-)
-```
+→ ChromaDB finds **Child A** (score: 0.91) — focused vector on UPI + ₹2000 + authentication
 
-Without `output_key="answer"`: LangChain tries to infer the output key, sees multiple candidates, raises `ValueError: Multiple keys returned`. This was a real bug hit during Prism development — subtle because the chain runs fine; the crash happens on the `save_context` call after.
+→ Fetches parent_id → returns **full parent paragraph** to LLM
+
+**Comparison Table:**
+
+| Approach | LLM Gets | Problem |
+| --- | --- | --- |
+| Dense-only, large chunks | Full paragraph (good) | Match was imprecise — wrong paragraph might score higher |
+| Dense-only, small chunks | Child A only (38 words) | Misses penalty info — incomplete answer |
+| ParentDocumentRetriever | Full paragraph (precise match + rich context) | ✅ Best of both |
+
+**LLM final answer:** "UPI transactions above ₹2,000 require additional authentication (biometric or OTP) from Jan 2025. Non-compliant PSPs face up to ₹10 lakh penalty."
 
 ---
 
-## 14. LLM at Ingest Time — The Briefing Pattern
+## 3. InMemoryStore — What It Actually Is
+
+**Key point: InMemoryStore is NOT part of ChromaDB. It's a separate, RAM-only store.**
+
+Under the hood it's essentially a plain Python dict wrapped in a LangChain class:
+
+```python
+store = {}
+store["parent_id_abc123"] = "Full 800-char parent chunk text..."
+store["parent_id_def456"] = "Another parent chunk..."
+```
+
+### Two Separate Stores in Prism
+
+| ChromaDB (on disk) | InMemoryStore (RAM only) |
+| --- | --- |
+| Child chunk vectors | Parent chunk text |
+| [vector, metadata] → find similar | parent_id → full text |
+| ✅ Survives restart | ❌ Dies on restart |
+
+### Flow
+
+```
+Child A metadata = { "parent_id": "abc123", "text": "short child..." }
+                            ↓
+             InMemoryStore["abc123"]
+                            ↓
+             "Full 800-char parent text" → LLM
+```
+
+### ⚠️ Known Limitation in Prism
+
+Render free tier cold-starts → InMemoryStore is wiped → must **re-ingest PDFs on every cold start**.
+
+ChromaDB persists to disk so child vectors survive, but parent text is gone.
+
+### ⚠️ Architecture Note — Intended vs Current Implementation
+
+`architecture.md` and Concept 2 describe ParentDocumentRetriever (child 200 / parent 800). The current `ingest.py` uses a single-pass `RecursiveCharacterTextSplitter` at 500 chars — no separate parent store. The ParentDocumentRetriever was the original design and is documented as such. Both chunking approaches teach the same tradeoff; the parent-child concept remains valid as a pattern even if the current code simplified to single-pass chunking.
+
+---
+
+## 4. LLM at Ingest Time — The Briefing Pattern
 
 ### Two Places LLMs Can Run in a RAG System
 
@@ -869,9 +377,720 @@ data = json.loads(match.group())
 | Best for | Document-level metadata, summaries, question suggestions | Answering specific user questions |
 | Examples | Briefing, contextual retrieval, chunk tagging | RAG answer, faithfulness eval, HyDE |
 
-The most powerful use of ingest-time LLM is **contextual retrieval** (roadmap): for every chunk, ask LLM "given this full document, write 2 sentences situating this chunk" — then prepend that context before embedding. Anthropic reports ~49% reduction in retrieval failures. Same LLM-at-ingest-time pattern, much higher impact.
+The most powerful use of ingest-time LLM is **contextual retrieval** (Concept 5): for every chunk, ask LLM "given this full document, write 2 sentences situating this chunk" — then prepend that context before embedding. Anthropic reports ~49% reduction in retrieval failures. Same LLM-at-ingest-time pattern, much higher impact.
 
 ---
+
+## 5. Contextual Retrieval — Fixing Decontextualized Chunks at Ingest
+
+### The Problem: Fixed-Size Chunks Lose Context
+
+`RecursiveCharacterTextSplitter` at 500 chars cuts documents into fragments. Many fragments are decontextualized — they lack the surrounding information that gives them meaning:
+
+```
+Chunk from NPCI merchant guidelines PDF:
+"The limit was revised to ₹2 lakh."
+
+Problems:
+- "The limit" — which limit? Not in this chunk.
+- "revised" — from what? Not in this chunk.
+- "₹2 lakh" — for what transaction type? Not in this chunk.
+
+Embedding of this chunk → weak, generic vector.
+Query "merchant UPI transaction cap" → this chunk may not surface.
+```
+
+No query-side technique (HyDE, Multi-Query) can fix this — the chunk embedding is weak regardless of how the query is phrased.
+
+### The Fix: Anthropic's Contextual Retrieval
+
+At ingest time, before embedding, ask the LLM to prepend 2 sentences situating each chunk in its document:
+
+```
+Prompt:
+  "Given this document: [full doc or representative sample]
+   Write 2 sentences situating this chunk in context.
+   
+   Chunk: 'The limit was revised to ₹2 lakh.'"
+
+LLM output:
+  "In the NPCI UPI merchant guidelines (2024), Section 4.3 covers
+   transaction ceiling revisions for PSPs. The limit was revised to ₹2 lakh."
+```
+
+The contextual prefix is **prepended to the chunk** before embedding:
+
+```python
+# ingest.py
+chunk.page_content = f"{context_prefix}\n\n{chunk.page_content}"
+# then embed this augmented text
+```
+
+The chunk stored for retrieval is now specific and rich. Same chunk now surfaces for "merchant UPI transaction cap" queries.
+
+### Why This Works
+
+| | Original chunk | Contextual chunk |
+|---|---|---|
+| Text | "The limit was revised to ₹2 lakh." | "NPCI UPI merchant guidelines 2024, PSP ceiling. The limit was revised to ₹2 lakh." |
+| Embedding | Generic "revision" vector | Specific "merchant UPI PSP ceiling" vector |
+| Retrieval | Misses merchant-related queries | Surfaces correctly |
+
+The embedding now represents a complete, specific idea instead of a floating fragment.
+
+### Design Pattern: Ingest-Time vs Query-Time
+
+| | Ingest-time LLM (Contextual Retrieval) | Query-time LLM (HyDE, Multi-Query) |
+|---|---|---|
+| Runs | Once per chunk, at upload | Every query |
+| Cost | Paid once; benefit on every future query | Paid per query |
+| What it fixes | Bad chunk embeddings (quality problem) | Query-corpus vocabulary gap (coverage problem) |
+| Latency impact | Upload slower (~40s for 30 chunks) | Query slower (+200ms per technique) |
+
+**Key insight:** Query-side techniques improve how well a query matches existing chunk vectors. Contextual retrieval improves the chunk vectors themselves. Both are needed for maximum recall.
+
+### Measured Results — Prism v1.3.0 (25 samples)
+
+| Metric | v1.0.0 baseline | v1.3.0 (HyDE+MQ+CTX) | Delta |
+|--------|-----------------|----------------------|-------|
+| context_recall | 0.51 | 0.768 | **+25.8pp** |
+| precision_at_5 | 0.89 | 0.984 | **+9.4pp** |
+| answer_relevancy | 0.62 | 0.799 | +17.9pp |
+| latency p50 | 2029ms | 2610ms | +28% |
+
+Contextual retrieval contributes ~+18% recall (v1.3.0 vs v1.2.0 without CTX: 0.768 vs 0.645).
+
+### Production Complication: 40s Upload
+
+30 chunks × 1 Groq call × ~1.3s/call (sequential) = ~40s blocking. Solution: parallel calls with `asyncio.Semaphore(3)` — 3 concurrent Groq calls at ~3000 TPM burst (under Groq's 6000 TPM limit). Reduces to ~15s. Two-phase upload: sync non-contextual embed first (user can query in <3s), contextual replacement in background.
+
+### Distinction from Briefing (Concept 4)
+
+| | Briefing | Contextual Retrieval |
+|---|---|---|
+| What | Document-level 5-bullet summary + 3 questions | Chunk-level 2-sentence situating context |
+| Shown to user | Yes (in upload response) | No (prepended to chunk text, invisible) |
+| Purpose | User orientation | Embedding quality improvement |
+| LLM calls | 1 per document | 1 per chunk (~30 per doc) |
+
+---
+
+## 6. Multi-Query Retrieval — Wider Net for Higher Recall
+
+### The Problem: Single Phrasing Has Blind Spots
+
+A query hits ChromaDB + BM25 with one set of tokens. Corpus chunks that express the same concept differently never surface.
+
+```
+Query: "What is the UPI merchant limit?"
+
+Corpus has:
+  Chunk A: "merchant UPI transaction cap is ₹5 lakh"      ← found ✓ (keyword match)
+  Chunk B: "ceiling for PSP collections was revised..."    ← MISSED (different vocab)
+  Chunk C: "payment service providers may not exceed..."   ← MISSED (no "merchant" token)
+```
+
+Chunk B and C are relevant. Single-phrasing retrieval misses them. This is why Prism v1.0.0 Violet had context_recall = 0.51 — only half the needed chunks were retrieved.
+
+### The Fix: Generate 3 Phrasings, Pool Results
+
+```
+Step 1: LLM generates 3 paraphrases of the original query
+  Original:    "What is the UPI merchant limit?"
+  Phrasing 2:  "What is the PSP payment ceiling for UPI collections?"
+  Phrasing 3:  "How much can merchants accept via UPI transactions?"
+
+Step 2: Run retrieval for EACH phrasing
+  Original     → [Chunk A, Chunk D, Chunk E, ...]  (retrieve_k per list)
+  Phrasing 2   → [Chunk B, Chunk A, Chunk F, ...]  ← Chunk B appears now
+  Phrasing 3   → [Chunk C, Chunk B, Chunk G, ...]  ← Chunk C appears now
+
+Step 3: Pool + deduplicate by content key (keep best rank per chunk)
+  Combined unique pool: [A, B, C, D, E, F, G, ...]
+
+Step 4: RRF fuse the deduplicated pool → rerank top-5
+  Reranker sees 30 candidates instead of 10 → picks best 5 from wider pool
+```
+
+### Why Deduplication Uses Best Rank
+
+If Chunk A appears at rank 1 in phrasing 1 and rank 3 in phrasing 2, keep it at rank 1 — its highest-confidence rank. The merged ranked list is then sorted by best rank before RRF fusion.
+
+```python
+# retriever.py — deduplication loop
+for rank, doc in enumerate(d_results):
+    key = doc["content"][:120]
+    if key not in dense_seen or rank < dense_seen[key][0]:
+        dense_seen[key] = (rank, doc)  # keep best (lowest) rank
+
+dense_pool = [doc for _, doc in sorted(dense_seen.values(), key=lambda x: x[0])]
+```
+
+### In Prism
+
+```python
+# retriever.py
+def _multi_query_expand(self, query: str) -> list[str]:
+    prompt = (
+        "Generate 3 different phrasings of the following question for document retrieval. "
+        "Each phrasing must use different vocabulary but seek the same information. "
+        "Return ONLY the 3 questions, one per line, no numbering, no preamble.\n\n"
+        f"Question: {query}"
+    )
+    # returns [original_query, phrasing_2, phrasing_3, phrasing_4]
+
+def _get_relevant_documents(self, query, ...):
+    queries = self._multi_query_expand(query) if self.use_multi_query else [query]
+    
+    dense_seen, sparse_seen = {}, {}
+    for q in queries:
+        # retrieve for each phrasing, keep best rank per unique chunk
+        ...
+    
+    dense_pool = sorted_by_best_rank(dense_seen)
+    sparse_pool = sorted_by_best_rank(sparse_seen)
+    
+    fused = self._rrf_fuse(dense_pool, sparse_pool)   # wider pool
+    reranked = rerank(query, fused[:retrieve_k], top_k=rerank_k)  # reranker uses original query
+```
+
+**OFF by default in prod** (`config.yaml` `multi_query_enabled: false`) — disabled 2026-07-05 alongside HyDE to stay under Groq free-tier 6000 TPM. Re-enable on paid tier; adds one Groq call per query (~200ms).
+
+**Measured result (v1.2.0, 25 samples, HyDE+MQ):** recall=0.645, P@5=0.904. Multi-Query alone provided smaller-than-expected recall lift. Root cause: query-side reformulation cannot fix decontextualized chunk embeddings — chunks with weak vectors rank low regardless of how the query is phrased. The larger recall gain came from Contextual Retrieval (Concept 5), which fixes chunk quality at ingest time.
+
+**Cost:** 1 extra Groq call + 3× retrieval calls (fast, in-memory) + 3× BM25 (negligible).
+
+**Reranker still uses original query** — not the phrasings. The phrasings widen the candidate pool; the reranker judges relevance against what the user actually asked.
+
+---
+
+## 7. HyDE — Hypothetical Document Embeddings
+
+### The Problem with Embedding a Question
+
+When you search ChromaDB, you embed the *query* and find similar vectors. But your corpus contains *answers*, not questions. They live in different regions of vector space.
+
+**Concrete example:**
+
+Query: `"What is the UPI transaction limit for P2P transfers?"`
+
+This embeds as a *question vector* — the model has seen millions of questions, it knows this pattern.
+
+The answer in your corpus: `"P2P UPI transfers are capped at ₹1 lakh per transaction per day as per NPCI guidelines."`
+
+This embeds as an *answer vector* — declarative sentence, factual tone, different region in 1536-dimensional space.
+
+They're semantically related, but the vector distance is larger than it should be.
+
+### HyDE's Solution
+
+Before searching, ask the LLM to hallucinate an answer:
+
+```
+Step 1: LLM generates a fake answer to the query
+  Query: "What is the UPI transaction limit for P2P transfers?"
+  Fake answer: "The UPI transaction limit for P2P transfers is typically 
+                set by NPCI and varies by bank, generally around ₹1 lakh 
+                per day for most PSPs."
+
+Step 2: Embed the FAKE ANSWER (not the query)
+  vector = embed("The UPI transaction limit for P2P transfers is...")
+
+Step 3: Search ChromaDB with this vector
+  → Finds real answer chunks that are semantically close to a fake answer
+  → Much closer in vector space than the original question was
+```
+
+### Why "Hypothetical" Works
+
+The fake answer and the real corpus chunk are both declarative, factual, answer-shaped text. They live in the same region of vector space. The query (a question) lives elsewhere.
+
+```
+Vector space (simplified):
+
+[Question zone]          [Answer zone]
+"What is UPI limit?" --- ... --- "P2P capped at ₹1 lakh..."
+       ↑                                    ↑
+  far from corpus                    close to corpus chunk
+  
+HyDE:
+"UPI limit is ~₹1 lakh..." ← fake answer → close to real chunk ✅
+```
+
+### In Prism
+
+```python
+# retriever.py
+def _hyde_expand(self, query: str) -> str:
+    prompt = f"Write a 2-sentence factual answer to: {query}"
+    return self.llm.invoke(prompt).content
+
+def _get_relevant_documents(self, query: str):
+    dense_query = self._hyde_expand(query) if self.use_hyde else query
+    
+    # Dense search uses fake answer embedding
+    dense_docs = self.vectorstore.similarity_search(dense_query, k=10)
+    
+    # BM25 still uses original query (keyword matching needs real terms)
+    sparse_docs = self.bm25_retrieve(query, k=10)
+    
+    return self.rrf_and_rerank(dense_docs, sparse_docs)
+```
+
+**OFF by default in prod** (`config.yaml` `hyde_enabled: false`) — disabled 2026-07-05 for free-tier Groq TPM stability (HyDE+MQ together = 4 Groq calls/query, causes 429 storms). Re-enable on paid tier; adds one Groq call per query (~200ms).
+
+**Measured lift (v1.1.0, 18 samples):** context_recall 0.51 → 0.72 (+21pp). Latency 2029ms → 4018ms p50 (2×). HyDE specifically helps recall — it finds chunks that keyword/direct-embed matching misses.
+
+---
+
+## 8. BM25Okapi — Why Keywords Beat Embeddings for Exact Terms
+
+### The Problem with Dense Retrieval on Regulatory Text
+
+Embeddings capture *meaning*. But regulatory text has exact identifiers — section numbers, policy codes, rupee amounts — where the exact token matters, not the meaning.
+
+**Example:**
+
+Query: `"What is the penalty for UPI non-compliance?"`
+
+A dense embedding model reads this as: *"something about UPI and consequences"*.
+
+Two chunks in corpus:
+- Chunk A: `"Non-compliant PSPs will face penalties up to ₹10 lakh per violation."` ← exact answer
+- Chunk B: `"UPI has transformed digital payments in India with over 100 billion transactions."` ← semantically close (UPI topic) but wrong
+
+Dense retrieval might rank Chunk B high because it's heavily UPI-themed. BM25 ranks Chunk A high because "penalt" and "non-compli" are rare, high-signal tokens.
+
+### How BM25Okapi Works
+
+Plain TF-IDF problem: a doc that says "UPI" 50 times gets 50× the score. That's unfair — one mention of "₹10 lakh" in the right context should beat 50 mentions of "UPI" in a generic overview.
+
+BM25 fixes this with **term frequency saturation**:
+
+```
+BM25 score = IDF(term) × [ tf × (k1 + 1) ] / [ tf + k1 × (1 - b + b × dl/avgdl) ]
+
+Where:
+  tf    = how many times term appears in this chunk
+  IDF   = how rare the term is across all chunks (log scale)
+  k1    = saturation constant (~1.5) — controls how fast TF saturates
+  b     = length normalization (~0.75)
+  dl    = this chunk's length
+  avgdl = average chunk length in corpus
+```
+
+**Saturation in plain English:**
+
+| tf (term count in chunk) | TF-IDF score | BM25 score (k1=1.5) |
+| --- | --- | --- |
+| 1 | 1.0 | 1.0 |
+| 5 | 5.0 | 1.56 ← plateaus |
+| 20 | 20.0 | 1.79 ← barely grows |
+| 50 | 50.0 | 1.88 ← effectively capped |
+
+A chunk mentioning "UPI" 50 times scores almost the same as one mentioning it 5 times. But "₹10 lakh" appearing once in a chunk that has it = high IDF (rare token) × full TF benefit.
+
+### In Prism
+
+```python
+# bm25_index.py
+from rank_bm25 import BM25Okapi
+
+# .lower() matters — "UPI" and "upi" are different tokens without it
+corpus = [doc["content"].lower().split() for doc in all_chunks]
+bm25 = BM25Okapi(corpus)
+
+# At query time — query also lowercased to match corpus tokenization:
+scores = bm25.get_scores(query.lower().split())
+top_k_idx = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
+```
+
+BM25 operates on raw tokens (word split). No embeddings. No GPU. Rebuilds in ~1s at startup from corpus.
+
+**Weight in Prism:** `sparse_weight=0.3` in RRF — BM25 is complementary, not dominant. Dense handles semantic meaning; BM25 catches exact matches dense misses.
+
+---
+
+## 9. RRF + Cross-Encoder Reranker Pipeline
+
+### 9a. RRF — Reciprocal Rank Fusion
+
+**Problem:** Dense retrieval returns a ranked list. BM25 returns a ranked list. Scores are on different scales (BM25: 0–15, cosine: 0–1) — can't add them directly.
+
+**RRF Solution:** Ignore raw scores. Use only rank position.
+
+```
+Standard RRF formula:
+score(doc) = Σ  1 / (k + rank_in_list)
+             k = 60  (constant, dampens top-rank advantage)
+
+Prism's weighted RRF (applied inside the formula per list):
+score(doc) += dense_weight  / (k + rank_in_dense_list)   # 0.7 × contribution
+score(doc) += sparse_weight / (k + rank_in_sparse_list)  # 0.3 × contribution
+```
+
+**Example:**
+
+| Doc | Dense (ChromaDB) | BM25 | RRF Score |
+| --- | --- | --- | --- |
+| Doc A | Rank 1 (0.91) | Rank 2 (9.1) | 1/61 + 1/62 = **0.0325** ✅ |
+| Doc C | Rank 3 (0.71) | Rank 1 (12.3) | 1/63 + 1/61 = **0.0320** |
+| Doc B | Rank 2 (0.87) | — | 1/62 = 0.0161 |
+| Doc D | — | Rank 3 (7.4) | 1/63 = 0.0159 |
+
+**Doc A wins** — appeared high in BOTH lists → signals true relevance.
+
+> In Prism: `dense_weight=0.7`, `sparse_weight=0.3` applied **inside** the RRF formula — each list's contribution is multiplied by its weight before summing. Not "before RRF" as a pre-filter, but as a per-list scaling factor within fusion (see Concept 8 for the actual BM25 code).
+> 
+
+### 9b. Cross-Encoder Reranker
+
+**Problem:** RRF gives top-10 candidates. Bi-encoder (ChromaDB) encodes query and doc *separately* → approximate similarity.
+
+**Cross-Encoder:** Feeds query + doc *together* into BERT → full attention across both → much more accurate relevance score.
+
+|  | Bi-Encoder (ChromaDB) | Cross-Encoder (TinyBERT) |
+| --- | --- | --- |
+| Method | embed(query) + embed(doc) → cosine(q,d) | BERT([query][SEP][doc]) → single score 0–1 |
+| Speed | Fast | Slow |
+| Accuracy | Approximate | Accurate |
+| Encoding | Independent | Joint |
+
+**Example — after RRF top-10:**
+
+| Pair | Cross-Encoder Score |
+| --- | --- |
+| (query, Doc A) | 0.94 ✅ |
+| (query, Doc B) | 0.88 ✅ |
+| (query, Doc C) | 0.61 |
+| (query, Doc D) | 0.23 |
+
+Top-5 by cross-encoder score → LLM
+
+### Full Retrieval Pipeline
+
+```
+Query
+  |
+  ├→ ChromaDB dense  → top-10 ranked docs
+  ├→ BM25 sparse     → top-10 ranked docs
+  |
+  ↓
+RRF fusion → merged top-10 (rank-based, scale-agnostic)
+  |
+  ↓
+Cross-encoder → re-scores all 10 jointly with query
+  |
+  ↓
+Top-5 parent chunks → LLM
+```
+
+---
+
+## 10. Metadata Filtering — Full-Corpus BM25 vs Subset Rebuild
+
+### The Naive Approach (Rejected)
+
+When a user selects 2 of 10 docs in a workspace and asks a question, the obvious move is: rebuild BM25 on just those 2 docs' chunks, then score.
+
+```
+Full corpus (10 docs, 500 chunks): IDF("penalty") = log(500 / 12) = high signal, rare term
+Filtered subset (2 docs, 40 chunks): IDF("penalty") = log(40 / 8) = same term now looks common
+```
+
+Rebuilding the index on a small subset **distorts IDF**. A term that's genuinely rare across the whole corpus (and therefore high-signal) gets deflated in a tiny subset where it happens to appear more densely. BM25's core assumption — rare terms are more informative — breaks when the "corpus" is redefined per request.
+
+### The Fix: Score on Full Index, Filter the Candidate Pool
+
+```python
+# bm25_index.py
+def sparse_retrieve(query, k=10, filter_sources=None):
+    scores = bm25.get_scores(query.lower().split())          # score against FULL corpus IDF
+    ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
+    if filter_sources:
+        ranked = [i for i in ranked if all_chunks[i]["source"] in filter_sources]
+    return ranked[:k]
+```
+
+IDF stays computed over the whole corpus (correct IR semantics). The filter only decides which *already-scored* candidates are eligible to enter the top-k — it never touches the scoring math. Same principle applied to ChromaDB dense search via `where={"source": {"$in": filter_sources}}`.
+
+### Why This Matters Beyond Prism
+
+General pattern for any "search within a subset" retrieval feature (multi-tenant search, folder-scoped search, permission-filtered RAG): filter the *candidate pool*, never rebuild the *statistics* the ranking depends on. Rebuilding statistics on a subset is a subtle bug — it looks correct (fewer, seemingly more relevant results) but silently changes what "relevant" means.
+
+### Ephemeral Retriever, Cached Vectorstore
+
+`get_retriever_filtered()` builds a new one-off `HybridRetriever` per filtered request (cheap — no re-embedding) but reuses the module-level cached Chroma vectorstore (expensive — model + disk index). The singleton cache is untouched by filtering; only the thin retrieval-logic wrapper is ephemeral.
+
+---
+
+## 11. ConversationalRetrievalChain — The Silent Context Killer
+
+### What the Chain Does Internally
+
+`ConversationalRetrievalChain` has two internal steps most people don't know about:
+
+```
+User question + chat history
+        ↓
+[STEP 1] Condense question
+        LLM rewrites "Is the price level good?" 
+        → "Is Bajaj Finance stock ₹908-924 a good buy in 2026?"
+        (standalone question for retrieval)
+        ↓
+[STEP 2] Retrieve + Answer
+        Standalone question → retriever → top-5 chunks → LLM answer
+```
+
+Step 1 exists so follow-up questions work without full history context. Good design for RAG.
+
+### The Bug: Web Context Gets Stripped
+
+When Prism added Tavily web search, the naive approach was:
+
+```python
+web_results = tavily.search(question)
+augmented_question = f"Web context: {web_results}\n\nQuestion: {question}"
+chain.invoke({"question": augmented_question})  # ← WRONG
+```
+
+What actually happens:
+
+```
+augmented_question (with Tavily content prepended)
+        ↓
+[STEP 1] Chain's condense LLM:
+        "Rewrite this as a standalone retrieval query."
+        Output: "What is Bajaj Finance stock price?"
+        ← ALL TAVILY CONTENT STRIPPED. LLM never sees it.
+        ↓
+[STEP 2] Answer LLM gets: corpus chunks only. No web context.
+```
+
+The chain's condensation step rewrites the question for retrieval quality — and throws away everything else.
+
+### The Fix in Prism
+
+Bypass the chain entirely for web queries. Direct LLM call:
+
+```python
+# chain.py
+def run_query_with_web(question, rag_docs, web_sources, memory):
+    history = memory.load_memory_variables({})["history"]
+    
+    prompt = f"""
+    Chat history: {history}
+    
+    Web search results:
+    {web_sources}
+    
+    Document context:
+    {rag_docs}
+    
+    Question: {question}
+    Answer:"""
+    
+    answer = llm.invoke(prompt)
+    memory.save_context({"input": question}, {"answer": answer})
+    return answer
+```
+
+No condensation step. Web context reaches the LLM guaranteed.
+
+**Lesson:** LangChain abstractions are powerful but opaque. When something doesn't work, read what the chain actually does internally — don't assume the abstraction is transparent.
+
+---
+
+## 12. ConversationBufferWindowMemory — Sliding Window Chat History
+
+### Why You Need Memory in a Chat System
+
+Each `POST /api/chat` is a stateless HTTP request. The LLM has no memory of what was said 10 seconds ago. Without memory:
+
+```
+User: "Tell me about UPI transaction limits."
+Prism: "UPI P2P limit is ₹1 lakh per day..."
+
+User: "What about merchant payments?"   ← no context
+LLM sees: question = "What about merchant payments?"  ← what is "about"? who knows?
+Prism: "Merchant payments are a type of..."  ← wrong, generic answer
+```
+
+### How ConversationBufferWindowMemory Works
+
+Keeps last `k` conversation turns (human + AI) as a rolling window:
+
+```python
+# memory.py
+memory = ConversationBufferWindowMemory(
+    memory_key="chat_history",
+    return_messages=True,
+    output_key="answer",   # ← critical — explained below
+    k=10,                  # keep last 10 turns
+)
+```
+
+Turn 1: `[Human: "Tell me about UPI limits", AI: "UPI P2P is ₹1 lakh..."]`
+Turn 2: `[Human: "Tell me about UPI limits", AI: "...", Human: "What about merchant payments?", AI: "Merchant UPI limit is ₹5 lakh..."]`
+
+At turn 11: Turn 1 is evicted. Window always has last 10.
+
+The chain sees:
+```
+Chat history:
+  Human: Tell me about UPI limits
+  AI: UPI P2P is ₹1 lakh per day...
+
+Current question: What about merchant payments?
+```
+→ LLM understands "What about" refers to UPI limits. Answers correctly.
+
+### The output_key Trap
+
+`ConversationalRetrievalChain` returns a dict with multiple keys:
+
+```python
+result = chain.invoke({"question": "..."})
+# result = {
+#   "answer": "UPI P2P limit is ₹1 lakh...",
+#   "source_documents": [...],
+#   "question": "..."
+# }
+```
+
+Memory's `save_context` call needs to know which key is the "output" to save:
+
+```python
+# WRONG — KeyError because chain returns multiple output keys
+memory = ConversationBufferWindowMemory(memory_key="chat_history")
+
+# RIGHT — tell memory exactly which key to save
+memory = ConversationBufferWindowMemory(
+    memory_key="chat_history",
+    output_key="answer",   # save result["answer"], not the whole dict
+)
+```
+
+Without `output_key="answer"`: LangChain tries to infer the output key, sees multiple candidates, raises `ValueError: Multiple keys returned`. This was a real bug hit during Prism development — subtle because the chain runs fine; the crash happens on the `save_context` call after.
+
+---
+
+## 13. Eval Metric Design — Why Faithfulness Is Circular
+
+### Four RAGAS Metrics and What They Actually Measure
+
+| Metric | Judge compares | Question it answers |
+| --- | --- | --- |
+| **faithfulness** | LLM answer vs retrieved chunks | "Did the LLM stick to what was in the retrieved docs?" |
+| **answer_correctness** | LLM answer vs ground_truth reference | "Is the answer actually right?" |
+| **answer_relevancy** | LLM answer vs original question | "Did the answer address what was asked?" |
+| **context_recall** | Retrieved chunks vs ground_truth | "Did retrieval find the chunks needed to answer?" |
+
+### The Faithfulness Trap
+
+In Prism v1 eval, faithfulness scored 1.0. Seemed great. Was meaningless.
+
+Here's why:
+
+```
+Eval pair designed alongside corpus:
+  Question: "What is the UPI P2P transaction limit?"
+  Ground truth: "₹1 lakh per day"
+  
+  Corpus chunk (also written by us): 
+  "P2P UPI transfers are capped at ₹1 lakh per day per NPCI guidelines."
+
+Flow:
+  1. LLM retrieves that chunk (of course — it's perfectly matched)
+  2. LLM answers: "The UPI P2P limit is ₹1 lakh per day."
+  3. RAGAS faithfulness judge: "Does answer match retrieved chunk?" → YES → score: 1.0
+```
+
+The judge is comparing the answer to the chunk that was *designed to produce that answer*. Circular. Score tells you the retrieval worked, not whether the answer is correct.
+
+### answer_correctness Is the Honest Metric
+
+```
+Flow:
+  1. LLM answers: "The UPI P2P limit is ₹1 lakh per day."
+  2. Ground truth (human-written reference): "₹1 lakh per transaction per day"
+  3. RAGAS judge: "Does answer match ground truth?" → mostly yes → score: 0.82
+```
+
+Judge compares to an *independent human reference*. No circular dependency on retrieved chunks. Harder to game.
+
+**Prism v1.0.0 Violet results:**
+
+| Metric | Score | Interpretation |
+| --- | --- | --- |
+| answer_correctness | 0.82 | 82% of answers match ground truth — honest signal |
+| answer_relevancy | 0.62 | RAGAS penalizes verbosity — Groq 70B tends to over-explain |
+| context_recall | 0.51 | Only 51% of needed chunks retrieved — target for Multi-Query |
+| P@5 | 0.89 | When chunks are retrieved, 89% are correct — precision is fine |
+
+### The P@5 + Recall Diagnostic
+
+P@5=0.89 + recall=0.51 tells you something specific:
+
+```
+Retrieval pool is too narrow.
+
+"When we retrieve something, it's usually right (0.89)."
+"But we're missing ~half the relevant chunks (0.51)."
+
+Root cause: single-phrasing query misses chunks phrased differently.
+Fix: Multi-Query Retrieval — generate 3 phrasings, retrieve for each, pool candidates.
+```
+
+This is exactly how production ML teams diagnose retrieval systems. The combination of metrics points to the specific fix.
+
+---
+
+## 14. Precision@K vs Recall — The Retrieval Diagnostic Pair
+
+### Definitions in Plain English
+
+Imagine your corpus has **5 chunks** that are genuinely relevant to a query. Your retriever returns **5 chunks** (K=5).
+
+```
+Ground truth relevant chunks: [A, B, C, D, E]
+Retrieved chunks:              [A, B, X, Y, Z]
+
+Precision@5 = correct retrieved / K = 2/5 = 0.40
+              "Of what I returned, how much was right?"
+
+Recall@5    = correct retrieved / total relevant = 2/5 = 0.40
+              "Of all the right chunks, how many did I find?"
+```
+
+### The Four Diagnostic Combinations
+
+| P@5 | Recall | Diagnosis | Fix |
+| --- | --- | --- | --- |
+| High | High | ✅ Retrieval working well | Ship it |
+| High | Low | Pool too narrow — finding right chunks but missing others | Multi-Query Retrieval, HyDE |
+| Low | High | Too much noise — finding relevant chunks but also junk | Better reranking, stricter K |
+| Low | Low | Retrieval fundamentally broken | Check embeddings, chunking strategy |
+
+### Prism v1.0.0 Violet: High P, Low Recall
+
+```
+P@5 = 0.89 → "When Prism retrieves a chunk, 89% of the time it's relevant."
+Recall = 0.51 → "But Prism only finds 51% of the relevant chunks total."
+
+Example query: "What are the RBI guidelines on UPI merchant limits?"
+
+Relevant chunks in corpus: [merchant_limit_2024, merchant_kyc, limit_circular_2023, payment_cap, psp_obligations]
+
+Prism retrieved: [merchant_limit_2024, merchant_kyc, some_unrelated_chunk, another_unrelated, payment_cap]
+
+Precision@5 = 3/5 = 0.60 (found 3 right ones, 2 noise)
+Recall = 3/5 = 0.60 (missed limit_circular_2023 and psp_obligations)
+```
+
+Why did it miss them? `limit_circular_2023` might use different phrasing: *"The ceiling for merchant UPI collections was revised..."* — no overlap with "merchant limits". Single-phrasing retrieval misses it.
+
+Multi-Query generates: `"UPI merchant payment ceiling"`, `"RBI merchant collection limit"`, `"PSP merchant UPI cap"` → retrieves from all three → pools candidates → recall rises.
 
 ---
 
@@ -1191,127 +1410,7 @@ Best production stack: v1.3.0 — HyDE + Multi-Query + Contextual Retrieval.
 
 ---
 
-## 17. Multi-Query Retrieval — Wider Net for Higher Recall
-
-### The Problem: Single Phrasing Has Blind Spots
-
-A query hits ChromaDB + BM25 with one set of tokens. Corpus chunks that express the same concept differently never surface.
-
-```
-Query: "What is the UPI merchant limit?"
-
-Corpus has:
-  Chunk A: "merchant UPI transaction cap is ₹5 lakh"      ← found ✓ (keyword match)
-  Chunk B: "ceiling for PSP collections was revised..."    ← MISSED (different vocab)
-  Chunk C: "payment service providers may not exceed..."   ← MISSED (no "merchant" token)
-```
-
-Chunk B and C are relevant. Single-phrasing retrieval misses them. This is why Prism v1.0.0 Violet had context_recall = 0.51 — only half the needed chunks were retrieved.
-
-### The Fix: Generate 3 Phrasings, Pool Results
-
-```
-Step 1: LLM generates 3 paraphrases of the original query
-  Original:    "What is the UPI merchant limit?"
-  Phrasing 2:  "What is the PSP payment ceiling for UPI collections?"
-  Phrasing 3:  "How much can merchants accept via UPI transactions?"
-
-Step 2: Run retrieval for EACH phrasing
-  Original     → [Chunk A, Chunk D, Chunk E, ...]  (retrieve_k per list)
-  Phrasing 2   → [Chunk B, Chunk A, Chunk F, ...]  ← Chunk B appears now
-  Phrasing 3   → [Chunk C, Chunk B, Chunk G, ...]  ← Chunk C appears now
-
-Step 3: Pool + deduplicate by content key (keep best rank per chunk)
-  Combined unique pool: [A, B, C, D, E, F, G, ...]
-
-Step 4: RRF fuse the deduplicated pool → rerank top-5
-  Reranker sees 30 candidates instead of 10 → picks best 5 from wider pool
-```
-
-### Why Deduplication Uses Best Rank
-
-If Chunk A appears at rank 1 in phrasing 1 and rank 3 in phrasing 2, keep it at rank 1 — its highest-confidence rank. The merged ranked list is then sorted by best rank before RRF fusion.
-
-```python
-# retriever.py — deduplication loop
-for rank, doc in enumerate(d_results):
-    key = doc["content"][:120]
-    if key not in dense_seen or rank < dense_seen[key][0]:
-        dense_seen[key] = (rank, doc)  # keep best (lowest) rank
-
-dense_pool = [doc for _, doc in sorted(dense_seen.values(), key=lambda x: x[0])]
-```
-
-### In Prism
-
-```python
-# retriever.py
-def _multi_query_expand(self, query: str) -> list[str]:
-    prompt = (
-        "Generate 3 different phrasings of the following question for document retrieval. "
-        "Each phrasing must use different vocabulary but seek the same information. "
-        "Return ONLY the 3 questions, one per line, no numbering, no preamble.\n\n"
-        f"Question: {query}"
-    )
-    # returns [original_query, phrasing_2, phrasing_3, phrasing_4]
-
-def _get_relevant_documents(self, query, ...):
-    queries = self._multi_query_expand(query) if self.use_multi_query else [query]
-    
-    dense_seen, sparse_seen = {}, {}
-    for q in queries:
-        # retrieve for each phrasing, keep best rank per unique chunk
-        ...
-    
-    dense_pool = sorted_by_best_rank(dense_seen)
-    sparse_pool = sorted_by_best_rank(sparse_seen)
-    
-    fused = self._rrf_fuse(dense_pool, sparse_pool)   # wider pool
-    reranked = rerank(query, fused[:retrieve_k], top_k=rerank_k)  # reranker uses original query
-```
-
-**ON by default** (`config.yaml` `multi_query_enabled: true`) — adds one Groq call per query (~200ms).
-
-**Measured result (v1.2.0, 25 samples, HyDE+MQ):** recall=0.645, P@5=0.904. Multi-Query alone provided smaller-than-expected recall lift. Root cause: query-side reformulation cannot fix decontextualized chunk embeddings — chunks with weak vectors rank low regardless of how the query is phrased. The larger recall gain came from Contextual Retrieval (Concept 21), which fixes chunk quality at ingest time.
-
-**Cost:** 1 extra Groq call + 3× retrieval calls (fast, in-memory) + 3× BM25 (negligible).
-
-**Reranker still uses original query** — not the phrasings. The phrasings widen the candidate pool; the reranker judges relevance against what the user actually asked.
-
----
-
-## Summary — Key Concepts Cheatsheet
-
-| Concept | What it solves | Where in Prism |
-| --- | --- | --- |
-| ParentDocumentRetriever | Retrieval precision + answer faithfulness | Ingestion + retrieval layer |
-| InMemoryStore | Fast parent text lookup by ID | RAM store (lost on restart) |
-| ChromaDB | Vector similarity search for child chunks | Persistent disk store |
-| BM25Okapi | Exact keyword matching with TF saturation | Sparse retrieval (weight 0.3) |
-| RRF | Merging dense + sparse rankings (scale-agnostic) | Post-retrieval fusion |
-| Cross-Encoder | Accurate joint query-doc relevance scoring | Final reranking step |
-| Chain condensation trap | Why LangChain strips web context silently | Web query bypass in chain.py |
-| HyDE | Closes question-answer vector space gap; +21pp recall | Dense retrieval (hyde_enabled: true) |
-| Faithfulness is circular | Why eval metrics designed alongside corpus lie | answer_correctness chosen as primary |
-| P@5 + Recall diagnostic pair | Identifies whether retrieval pool is narrow or noisy | v1.0.0 Violet: P=0.89, R=0.51 |
-| RecursiveCharacterTextSplitter | Splits at paragraph/line/word/char in priority order | ingest.py chunking |
-| ConversationBufferWindowMemory | Sliding k-window of chat history + output_key trap | memory.py, used in chain |
-| LLM at ingest time | Briefing pattern — run LLM once per doc, not per query | briefing.py on upload |
-| Contextual Retrieval | Fix decontextualized chunks at ingest; +18% recall | `contextualize_chunks_async()` in ingest.py |
-| Answer Correctness | LLM judge 1–5 vs ground truth, normalized → 0–1 | Primary metric, independent of retrieved chunks |
-| Answer Relevancy | Reverse-question cosine similarity — penalizes verbose LLM | RAGAS, no ground truth needed |
-| Context Recall | GT sentences attributed to retrieved chunks ÷ total | RAGAS, measures retrieval completeness |
-| Precision@5 | Relevant chunks in top-5 ÷ 5, source + keyword match | Custom deterministic, no LLM call |
-| Latency p50/p95/p99 | Percentile timing: median / worst-normal / absolute-worst | numpy.percentile over per-query ms measurements |
-| Multi-Query Retrieval | Wider candidate pool; best rank dedup before RRF | retriever.py `_multi_query_expand()` (multi_query_enabled: true) |
-| Semantic Chunking Tradeoff | Recall vs precision when eval is fixed-chunk-aligned | v1.4.0 ablation: +9.3pp recall, −27.3pp P@5, 5× latency |
-
----
-
-
----
-
-## 20. Semantic Chunking Tradeoff — Recall vs Precision
+## 16. Semantic Chunking Tradeoff — Recall vs Precision
 
 ### The Problem with Fixed-Size Splits
 
@@ -1350,94 +1449,47 @@ Semantic chunking would make more sense when:
 
 ---
 
-## 21. Contextual Retrieval — Fixing Decontextualized Chunks at Ingest
+## 17. Provider Migration Isn't Free — Check Model Availability Before Refactoring
 
-### The Problem: Fixed-Size Chunks Lose Context
+### The Attempt (2026-06-29, Reverted Same Day)
 
-`RecursiveCharacterTextSplitter` at 500 chars cuts documents into fragments. Many fragments are decontextualized — they lack the surrounding information that gives them meaning:
+Groq free tier's 6000 TPM limit caused 429 storms when HyDE + Multi-Query + Contextual Retrieval fired concurrently. The fix looked simple: Groq exposes an OpenAI-compatible chat API (`ChatOpenAI(base_url=..., api_key=...)` works against any provider that mirrors `api.openai.com/v1/chat/completions`), so swapping to Cerebras should have been a `base_url` + API key change.
 
-```
-Chunk from NPCI merchant guidelines PDF:
-"The limit was revised to ₹2 lakh."
+8 commits later, migration reverted, `git reset --hard` back to the pre-migration commit (`dec430b`). Code today still constructs `ChatGroq` directly in every module (`chain.py:43`, `ingest.py:161,273`, `retriever.py:68-104`, `briefing.py:14`, `eval/ragas_eval.py:50`) — no provider abstraction layer exists in Prism.
 
-Problems:
-- "The limit" — which limit? Not in this chunk.
-- "revised" — from what? Not in this chunk.
-- "₹2 lakh" — for what transaction type? Not in this chunk.
+### Why It Failed — Discovered Only After Building
 
-Embedding of this chunk → weak, generic vector.
-Query "merchant UPI transaction cap" → this chunk may not surface.
-```
+- Cerebras' free tier only had 2 models available on the account: `gpt-oss-120b` and `zai-glm-4.7`. Llama 3.3 70B (what Prism's prompts, eval ground truth, and quality baseline were all tuned around) wasn't available at all.
+- Cerebras' rate limit was 5 req/min shared across all calls — worse than Groq's limit for Prism's concurrent-call pattern (HyDE + MQ + contextual fire multiple LLM calls per request).
 
-No query-side technique (HyDE, Multi-Query) can fix this — the chunk embedding is weak regardless of how the query is phrased.
+### The Actual Fix Was Cheaper Than Migration
 
-### The Fix: Anthropic's Contextual Retrieval
+`hyde_enabled: false`, `multi_query_enabled: false` in `config.yaml` — cut Groq calls per query from 4 to 1-2. Contextual retrieval stayed on (it calls Euron for embeddings, not Groq — zero TPM impact). Zero code changes, one config edit, reversible by flipping two booleans back once on a paid Groq tier.
 
-At ingest time, before embedding, ask the LLM to prepend 2 sentences situating each chunk in its document:
+### The Lesson
 
-```
-Prompt:
-  "Given this document: [full doc or representative sample]
-   Write 2 sentences situating this chunk in context.
-   
-   Chunk: 'The limit was revised to ₹2 lakh.'"
+"OpenAI-compatible API" only guarantees the *request shape* matches — it says nothing about *which models* a given provider's free tier actually grants you, or their *rate limits*. Verify both against the new provider's dashboard before writing a single line of migration code. Here, checking Cerebras' available models first (a 5-minute lookup) would have prevented an 8-commit detour. When the actual constraint is a rate limit, look for a config-level lever (disable expensive features) before reaching for an infrastructure-level one (swap providers).
 
-LLM output:
-  "In the NPCI UPI merchant guidelines (2024), Section 4.3 covers
-   transaction ceiling revisions for PSPs. The limit was revised to ₹2 lakh."
-```
+---
 
-The contextual prefix is **prepended to the chunk** before embedding:
+## Summary — Key Concepts Cheatsheet
 
-```python
-# ingest.py
-chunk.page_content = f"{context_prefix}\n\n{chunk.page_content}"
-# then embed this augmented text
-```
-
-The chunk stored for retrieval is now specific and rich. Same chunk now surfaces for "merchant UPI transaction cap" queries.
-
-### Why This Works
-
-| | Original chunk | Contextual chunk |
-|---|---|---|
-| Text | "The limit was revised to ₹2 lakh." | "NPCI UPI merchant guidelines 2024, PSP ceiling. The limit was revised to ₹2 lakh." |
-| Embedding | Generic "revision" vector | Specific "merchant UPI PSP ceiling" vector |
-| Retrieval | Misses merchant-related queries | Surfaces correctly |
-
-The embedding now represents a complete, specific idea instead of a floating fragment.
-
-### Design Pattern: Ingest-Time vs Query-Time
-
-| | Ingest-time LLM (Contextual Retrieval) | Query-time LLM (HyDE, Multi-Query) |
-|---|---|---|
-| Runs | Once per chunk, at upload | Every query |
-| Cost | Paid once; benefit on every future query | Paid per query |
-| What it fixes | Bad chunk embeddings (quality problem) | Query-corpus vocabulary gap (coverage problem) |
-| Latency impact | Upload slower (~40s for 30 chunks) | Query slower (+200ms per technique) |
-
-**Key insight:** Query-side techniques improve how well a query matches existing chunk vectors. Contextual retrieval improves the chunk vectors themselves. Both are needed for maximum recall.
-
-### Measured Results — Prism v1.3.0 (25 samples)
-
-| Metric | v1.0.0 baseline | v1.3.0 (HyDE+MQ+CTX) | Delta |
-|--------|-----------------|----------------------|-------|
-| context_recall | 0.51 | 0.768 | **+25.8pp** |
-| precision_at_5 | 0.89 | 0.984 | **+9.4pp** |
-| answer_relevancy | 0.62 | 0.799 | +17.9pp |
-| latency p50 | 2029ms | 2610ms | +28% |
-
-Contextual retrieval contributes ~+18% recall (v1.3.0 vs v1.2.0 without CTX: 0.768 vs 0.645).
-
-### Production Complication: 40s Upload
-
-30 chunks × 1 Groq call × ~1.3s/call (sequential) = ~40s blocking. Solution: parallel calls with `asyncio.Semaphore(3)` — 3 concurrent Groq calls at ~3000 TPM burst (under Groq's 6000 TPM limit). Reduces to ~15s. Two-phase upload: sync non-contextual embed first (user can query in <3s), contextual replacement in background.
-
-### Distinction from Briefing (Concept 14)
-
-| | Briefing | Contextual Retrieval |
-|---|---|---|
-| What | Document-level 5-bullet summary + 3 questions | Chunk-level 2-sentence situating context |
-| Shown to user | Yes (in upload response) | No (prepended to chunk text, invisible) |
-| Purpose | User orientation | Embedding quality improvement |
-| LLM calls | 1 per document | 1 per chunk (~30 per doc) |
+| # | Concept | What it solves | Where in Prism |
+| --- | --- | --- | --- |
+| 1 | RecursiveCharacterTextSplitter | Splits at paragraph/line/word/char in priority order | ingest.py chunking |
+| 2 | ParentDocumentRetriever | Retrieval precision + answer faithfulness | Ingestion + retrieval layer (design pattern, not current code) |
+| 3 | InMemoryStore | Fast parent text lookup by ID | RAM store (lost on restart) |
+| 4 | LLM at ingest time (Briefing) | Briefing pattern — run LLM once per doc, not per query | briefing.py on upload |
+| 5 | Contextual Retrieval | Fix decontextualized chunks at ingest; +18% recall | `contextualize_chunks_async()` in ingest.py |
+| 6 | Multi-Query Retrieval | Wider candidate pool; best rank dedup before RRF | retriever.py `_multi_query_expand()` (OFF in prod) |
+| 7 | HyDE | Closes question-answer vector space gap; +21pp recall | Dense retrieval (OFF in prod, hyde_enabled: false) |
+| 8 | BM25Okapi | Exact keyword matching with TF saturation | Sparse retrieval (weight 0.3) |
+| 9 | RRF + Cross-Encoder | Merging dense + sparse rankings (scale-agnostic) + accurate joint scoring | Post-retrieval fusion + final reranking step |
+| 10 | Metadata Filtering (full-corpus IDF) | Filter candidate pool, not the statistics — subset rebuild distorts BM25 IDF | bm25_index.py `sparse_retrieve(filter_sources=...)` |
+| 11 | Chain condensation trap | Why LangChain strips web context silently | Web query bypass in chain.py |
+| 12 | ConversationBufferWindowMemory | Sliding k-window of chat history + output_key trap | memory.py, used in chain |
+| 13 | Faithfulness is circular | Why eval metrics designed alongside corpus lie | answer_correctness chosen as primary |
+| 14 | P@5 + Recall diagnostic pair | Identifies whether retrieval pool is narrow or noisy | v1.0.0 Violet: P=0.89, R=0.51 |
+| 15 | Eval Dashboard Metrics (Full Reference) | Answer Correctness, Answer Relevancy, Context Recall, Precision@5, Latency p50/p95/p99 | eval-dashboard/, scripts/run_eval_versioned.py |
+| 16 | Semantic Chunking Tradeoff | Recall vs precision when eval is fixed-chunk-aligned | v1.4.0 ablation: +9.3pp recall, −27.3pp P@5, 5× latency |
+| 17 | Provider Migration Risk | "OpenAI-compatible" ≠ same models/limits — check before migrating | Cerebras attempt reverted 2026-06-29; config toggle used instead |

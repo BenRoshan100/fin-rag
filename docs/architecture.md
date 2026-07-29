@@ -6,6 +6,57 @@ Fintech analysts spend hours manually reading RBI circulars, NPCI reports, and e
 ## Architecture overview
 Upload → chunk (500-char) → optional contextual augmentation (LLM prepends 2-sentence context per chunk) → embed via Euron API → store in ChromaDB + BM25 index. Query → optional HyDE expand → optional multi-query expand → hybrid retrieval (ChromaDB dense + BM25 sparse) → weighted RRF fusion → cross-encoder rerank (top-10 → top-5) → Tavily web search → LLM answer via SSE stream → LangSmith trace. Multi-workspace: each workspace has its own ChromaDB collection; vectorstore + retriever cached per workspace. Upload returns 202 immediately; embed + contextualize run as background task polled via `GET /api/upload/status/{job_id}`. Eval runs offline via `scripts/run_eval_versioned.py`; results served by a separate `eval-dashboard/` static site.
 
+## Flow chart
+
+```mermaid
+flowchart TD
+    subgraph ING["Ingestion — POST /api/upload"]
+        U1[Upload PDF/TXT/CSV/URL] --> U2[Parse: LlamaParse → pypdf fallback]
+        U2 --> U3{Encrypted PDF?}
+        U3 -->|yes| U3E[422 error — password message]
+        U3 -->|no| U4[Return 202 + job_id immediately]
+        U4 --> U5[RecursiveCharacterTextSplitter 500-char / 50 overlap]
+        U5 --> U6[Euron API embed → ChromaDB workspace collection]
+        U6 --> U7[Rebuild BM25 index]
+        U7 --> U8[generate_briefing: 5 bullets + 3 questions]
+        U8 --> U9{contextual_retrieval.enabled?}
+        U9 -->|false| U11[Status: ready]
+        U9 -->|true| U10{chunks > max_chunks 50?}
+        U10 -->|yes, skip| U11
+        U10 -->|no| U10B[contextualize_chunks_async Semaphore 3 <br/> Groq gpt-oss-20b prepends 2-sentence context]
+        U10B --> U10C[Replace chunk IDs in ChromaDB]
+        U10C --> U11
+        U11 --> U12[Frontend polls GET /api/upload/status/job_id every 2s]
+    end
+
+    subgraph QRY["Query — POST /api/chat"]
+        Q1[Question received] --> Q2[condense_question: LLM rewrites w/ chat history]
+        Q2 --> Q3[Tavily web search — advanced, max 2 results, 800 char/result]
+        Q2 --> Q4{filter_docs set?}
+        Q4 -->|yes| Q4A[get_retriever_filtered: ephemeral HybridRetriever, cached vectorstore]
+        Q4 -->|no| Q4B[Cached singleton retriever for workspace]
+        Q4A --> Q5
+        Q4B --> Q5[HybridRetriever._get_relevant_documents]
+        Q5 --> Q6{multi_query_enabled?<br/>OFF in prod}
+        Q6 -->|true| Q6A[LLM generates 3 phrasings]
+        Q6 -->|false| Q6B[Single query phrasing]
+        Q6A --> Q7
+        Q6B --> Q7{hyde_enabled?<br/>OFF in prod}
+        Q7 -->|true| Q7A[LLM generates hypothetical answer → embed fake answer]
+        Q7 -->|false| Q7B[Embed raw query]
+        Q7A --> Q8
+        Q7B --> Q8[dense_retrieve: ChromaDB top-10 per phrasing<br/>+ sparse_retrieve: BM25 top-10 per phrasing<br/>— where filter_docs set]
+        Q8 --> Q9[reciprocal_rank_fusion: dedupe, weighted RRF<br/>dense 0.7 / sparse 0.3]
+        Q9 --> Q10[Reranker: cross-encoder TinyBERT top-10 → top-5]
+        Q10 --> Q11[stream_query_with_web: direct LLM call<br/>RAG chunks + Tavily results + chat history]
+        Q3 --> Q11
+        Q11 --> Q12[SSE token stream]
+        Q12 --> Q13[SSE done event: sources + retrieval_method + per-chunk scores]
+    end
+
+    U11 -.invalidates cache, workspace re-embedded.-> Q4B
+```
+
 ## Component breakdown
 
 | Component | Technology | Purpose |
@@ -17,9 +68,9 @@ Upload → chunk (500-char) → optional contextual augmentation (LLM prepends 2
 | Embeddings | Euron API (text-embedding-3-small) | API-based; Groq has no embeddings endpoint. |
 | LLM | Groq (llama-3.3-70b-versatile) via langchain-groq | Fast open-weight inference; OpenAI-compatible |
 | Chunking | RecursiveCharacterTextSplitter (500-char, overlap 50) | Single-pass split; semantic chunking available but disabled (ablation: +9.3pp recall, −27.3pp P@5, 5× latency) |
-| Contextual retrieval | LLM (openai/gpt-oss-20b) at ingest time | Prepends 2-sentence situating context per chunk before embedding; +18% recall. Async via Semaphore(3). |
-| HyDE | Groq LLM generates hypothetical answer before dense search | Closes question/answer vector space gap; +21pp recall. ON by default. |
-| Multi-Query | Groq LLM generates 3 query phrasings | Widens candidate pool before RRF; best-rank dedup. ON by default. |
+| Contextual retrieval | LLM (openai/gpt-oss-20b) at ingest time | Prepends 2-sentence situating context per chunk before embedding; +18% recall. Async via Semaphore(3). `max_chunks: 50` gate skips contextual for oversized docs to bound latency. |
+| HyDE | Groq LLM generates hypothetical answer before dense search | Closes question/answer vector space gap; +21pp recall (measured). OFF by default in prod — disabled 2026-07-05 for free-tier Groq TPM stability. Toggle: `config.yaml hyde_enabled`. |
+| Multi-Query | Groq LLM generates 3 query phrasings | Widens candidate pool before RRF; best-rank dedup. OFF by default in prod — disabled 2026-07-05 for free-tier Groq TPM stability. Toggle: `config.yaml multi_query_enabled`. |
 | Web search | Tavily (advanced, max 2 results, 800-char truncation) | Mandatory on every query; grounded answers for open-domain questions |
 | Memory | ConversationBufferWindowMemory (k=10) | Last 10 conversation turns |
 | Chain | `stream_query_with_web()` — direct LLM call bypassing ConversationalRetrievalChain | Bypasses chain to prevent condensation step stripping web context; yields SSE token stream |
@@ -70,9 +121,9 @@ Upload → chunk (500-char) → optional contextual augmentation (LLM prepends 2
 - **RecursiveCharacterTextSplitter 500-char**: single-pass chunking; semantic chunking ablation (v1.4.0) showed +9.3pp recall but −27.3pp P@5 and 5× latency — rejected.
 - **Cross-encoder reranker**: bi-encoder (ChromaDB) is fast but approximate; cross-encoder is slower but more accurate on top-10 pool.
 - **BM25 weight 0.3**: regulatory text has exact keyword matches (section numbers); sparse retrieval catches what dense misses.
-- **HyDE ON by default**: hypothetical answer embedding closes question/answer vector space gap. Measured +21pp recall (0.51→0.72, v1.1.0). Adds one Groq call per query (~200ms latency).
-- **Multi-Query ON by default**: 3 phrasings widen candidate pool before RRF. Best-rank dedup ensures highest-confidence rank carried into fusion. Adds one Groq call per query.
-- **Contextual retrieval**: LLM prepends 2-sentence situating context to each chunk at ingest before embedding. +18% recall (v1.3.0). `asyncio.Semaphore(3)` caps parallel Groq calls at 3000 TPM — safe under 6000 TPM free limit.
+- **HyDE measured +21pp recall, disabled in prod**: hypothetical answer embedding closes question/answer vector space gap (0.51→0.72, v1.1.0). Adds one Groq call per query. Disabled 2026-07-05 — HyDE+MQ together = 4 Groq calls/query, causes 429 storms on free-tier 6000 TPM. Re-enable on paid tier.
+- **Multi-Query measured, disabled in prod**: 3 phrasings widen candidate pool before RRF; best-rank dedup keeps highest-confidence rank. Adds one Groq call per query. Disabled 2026-07-05 alongside HyDE for same TPM reason.
+- **Contextual retrieval — ON in prod**: LLM prepends 2-sentence situating context to each chunk at ingest before embedding. +18% recall (v1.3.0). `asyncio.Semaphore(3)` caps parallel Groq calls at 3000 TPM. `max_chunks: 50` gate skips contextual for oversized docs. Uses Euron-adjacent Groq small model (`openai/gpt-oss-20b`) — separate TPM budget from HyDE/MQ, stays on regardless of their toggle.
 - **Mandatory web search**: always-on Tavily + RAG prevents hallucination on open-domain queries. Toggle removed after opt-in caused wrong corpus docs to be cited with high faithfulness score.
 - **Streaming SSE**: `stream_query_with_web()` yields token events via FastAPI `StreamingResponse`. Bypasses `ConversationalRetrievalChain` condensation step (which strips web context). Direct LLM call with full context.
 - **Async upload (202 pattern)**: parse+chunk synchronous (<1s) → return 202 + job_id → embed+contextualize in `BackgroundTask`. Frontend polls `GET /api/upload/status/{job_id}`. User queryable in <3s without waiting ~40s for contextualization.
